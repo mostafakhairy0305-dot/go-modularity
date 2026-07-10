@@ -106,3 +106,15 @@ tasks:
     desc: Alias for fmt:check
     cmds:
       - task: fmt:check
+  ci:
+    run: once
+    desc: Run CI checks
+    cmds:
+      - task: fmt:check
+      - task: lint
+  ci:fix:
+    run: once
+    desc: Run CI fix
+    cmds:
+      - task: fmt
+      - task: lint:fix
