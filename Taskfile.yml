@@ -122,10 +122,10 @@ tasks:
     cmds:
       - task: fmt:check
       - task: lint
+      - task: test:coverage
   ci:fix:
     run: once
     desc: Run CI fix
     cmds:
       - task: fmt
       - task: lint:fix
-      - task: test:coverage
