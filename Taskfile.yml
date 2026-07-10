@@ -106,6 +106,16 @@ tasks:
     desc: Alias for fmt:check
     cmds:
       - task: fmt:check
+  test:
+    run: once
+    desc: Run Go tests
+    cmds:
+      - go test ./...
+  test:coverage:
+    run: once
+    desc: Run Go tests and report coverage per function
+    cmds:
+      - go test -covermode=atomic -coverprofile=coverage.out ./...
   ci:
     run: once
     desc: Run CI checks
@@ -118,3 +128,4 @@ tasks:
     cmds:
       - task: fmt
       - task: lint:fix
+      - task: test:coverage
