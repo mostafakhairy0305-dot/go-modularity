@@ -1,0 +1,13 @@
+// Package domain holds the complexity feature's formulas: cyclomatic
+// complexity per method, computed from branch facts (never from an AST —
+// the compiler adapter only counts syntax, the formula lives here).
+package domain
+
+import typefacts "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
+
+// Cyclomatic computes a method's cyclomatic complexity: base 1, incremented
+// for each if, for, range, non-default case, select communication clause,
+// &&, and ||.
+func Cyclomatic(b typefacts.BranchStats) int {
+	return 1 + b.Ifs + b.Fors + b.Ranges + b.Cases + b.SelectComms + b.LogicalOps
+}

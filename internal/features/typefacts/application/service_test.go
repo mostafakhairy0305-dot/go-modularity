@@ -1,0 +1,67 @@
+package application
+
+import (
+	"testing"
+
+	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
+)
+
+func TestAssembleOrderingAndIDs(t *testing.T) {
+	extracts := []domain.PackageExtract{
+		{
+			Path: "example.com/m/zeta",
+			Types: []domain.TypeExtract{
+				{Name: "B", ReferencedTypeKeys: []string{
+					"example.com/m/alpha.A",
+					"example.com/m/alpha.A",      // duplicate collapses
+					"example.com/m/missing.Gone", // outside the analyzed set
+				}},
+				{Name: "A"},
+			},
+			Imports: []string{"fmt", "example.com/m/alpha", "fmt", "example.com/m/zeta"},
+		},
+		{
+			Path:     "example.com/m/alpha",
+			InModule: true,
+			Types:    []domain.TypeExtract{{Name: "A"}},
+		},
+	}
+
+	facts := Assemble("example.com/m", extracts)
+
+	if facts.ModulePath != "example.com/m" {
+		t.Fatalf("module = %q", facts.ModulePath)
+	}
+	if len(facts.Packages) != 2 || facts.Packages[0].Path != "example.com/m/alpha" {
+		t.Fatalf("packages not sorted by path: %+v", facts.Packages)
+	}
+	for i, pkg := range facts.Packages {
+		if pkg.ID != i {
+			t.Fatalf("package ID %d at index %d", pkg.ID, i)
+		}
+	}
+
+	// Types globally sorted by (package path, name) with dense IDs.
+	wantNames := []string{"A", "A", "B"}
+	for i, typ := range facts.Types {
+		if typ.ID != i || typ.Name != wantNames[i] {
+			t.Fatalf("types[%d] = {ID:%d Name:%q}, want {ID:%d Name:%q}",
+				i, typ.ID, typ.Name, i, wantNames[i])
+		}
+	}
+
+	// zeta.B (last type) references alpha.A (ID 0); the missing key dropped.
+	b := facts.Types[2]
+	if len(b.ReferencedTypeIDs) != 1 || b.ReferencedTypeIDs[0] != 0 {
+		t.Fatalf("B.ReferencedTypeIDs = %v, want [0]", b.ReferencedTypeIDs)
+	}
+
+	// Imports deduplicated, sorted, self-import removed.
+	zeta := facts.Packages[1]
+	if len(zeta.Imports) != 2 || zeta.Imports[0] != "example.com/m/alpha" || zeta.Imports[1] != "fmt" {
+		t.Fatalf("zeta.Imports = %v", zeta.Imports)
+	}
+	if len(zeta.TypeIDs) != 2 || facts.Types[zeta.TypeIDs[0]].Name != "A" {
+		t.Fatalf("zeta.TypeIDs = %v", zeta.TypeIDs)
+	}
+}
