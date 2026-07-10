@@ -21,9 +21,12 @@ func LCOM96b(totalMethodFieldAccesses, fieldCount, methodCount int) MetricResult
 	if fieldCount == 0 {
 		return notApplicable(MetricLCOM96b, ScopeType, DefinitionLCOM96b, "type has no fields")
 	}
+
 	if methodCount == 0 {
 		return notApplicable(MetricLCOM96b, ScopeType, DefinitionLCOM96b, "type has no methods")
 	}
+
 	density := float64(totalMethodFieldAccesses) / (float64(fieldCount) * float64(methodCount))
+
 	return applicable(MetricLCOM96b, ScopeType, DefinitionLCOM96b, 1-density)
 }

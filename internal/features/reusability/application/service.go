@@ -1,6 +1,3 @@
-// Package application orchestrates the reusability feature. It validates
-// and defaults the component weights once per run, then evaluates the index
-// per type from facts and upstream metric results.
 package application
 
 import (
@@ -23,9 +20,12 @@ func NewService(weights metrics.ReusabilityWeights) (*Service, error) {
 	if (weights == metrics.ReusabilityWeights{}) {
 		weights = metrics.DefaultReusabilityWeights()
 	}
-	if err := weights.Validate(); err != nil {
+
+	err := weights.Validate()
+	if err != nil {
 		return nil, err
 	}
+
 	return &Service{weights: weights}, nil
 }
 

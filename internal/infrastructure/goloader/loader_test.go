@@ -21,6 +21,7 @@ func healthy(path string, files ...string) *packages.Package {
 // error policy.
 func TestSelectPackages(t *testing.T) {
 	t.Parallel()
+
 	base := healthy("m/a", "a.go")
 	variant := healthy("m/a", "a.go", "a_test.go") // more files → preferred
 	testBin := &packages.Package{PkgPath: "m/a.test"}
@@ -30,9 +31,11 @@ func TestSelectPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(got) != 1 || got[0].PkgPath != "m/a" {
 		t.Fatalf("selected %v", got)
 	}
+
 	if len(got[0].CompiledGoFiles) != 2 {
 		t.Fatal("did not prefer the test-augmented variant")
 	}
@@ -45,14 +48,18 @@ func TestSelectPackages(t *testing.T) {
 // White-box: the main module wins; otherwise any module; otherwise empty.
 func TestMainModulePath(t *testing.T) {
 	t.Parallel()
+
 	main := &packages.Package{Module: &packages.Module{Path: "example.com/main", Main: true}}
+
 	dep := &packages.Package{Module: &packages.Module{Path: "example.com/dep"}}
 	if got := mainModulePath([]*packages.Package{dep, main}); got != "example.com/main" {
 		t.Errorf("got %q, want main", got)
 	}
+
 	if got := mainModulePath([]*packages.Package{dep}); got != "example.com/dep" {
 		t.Errorf("got %q, want dep fallback", got)
 	}
+
 	if got := mainModulePath([]*packages.Package{{}}); got != "" {
 		t.Errorf("got %q, want empty", got)
 	}
@@ -61,9 +68,11 @@ func TestMainModulePath(t *testing.T) {
 // White-box: base dir is always absolutized.
 func TestResolveBaseDir(t *testing.T) {
 	t.Parallel()
+
 	if got := resolveBaseDir(""); !filepath.IsAbs(got) {
 		t.Errorf("empty → cwd abs, got %q", got)
 	}
+
 	if got := resolveBaseDir("relative/path"); !filepath.IsAbs(got) {
 		t.Errorf("relative → abs, got %q", got)
 	}

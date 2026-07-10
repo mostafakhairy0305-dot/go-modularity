@@ -1,6 +1,3 @@
-// Package domain holds the architecture feature's entity logic: the package
-// dependency graph and the per-package coupling counts feeding Abstractness,
-// Instability, and Distance.
 package domain
 
 import (
@@ -46,6 +43,7 @@ func BuildDependencyGraph(facts *typefacts.ProjectFacts, scope Scope) Dependency
 	for i := range facts.Packages {
 		analyzed[facts.Packages[i].Path] = i
 	}
+
 	if facts.ModulePath == "" && scope == ScopeModule {
 		scope = ScopeProject
 	}
@@ -56,11 +54,13 @@ func BuildDependencyGraph(facts *typefacts.ProjectFacts, scope Scope) Dependency
 			if target, ok := analyzed[path]; ok {
 				graph.Couplings[target].Afferent++
 			}
+
 			if inScope(path, scope, facts.ModulePath, analyzed) {
 				graph.Couplings[i].Efferent++
 			}
 		}
 	}
+
 	return graph
 }
 
@@ -72,6 +72,7 @@ func inScope(path string, scope Scope, modulePath string, analyzed map[string]in
 		return path == modulePath || strings.HasPrefix(path, modulePath+"/")
 	default: // ScopeProject
 		_, ok := analyzed[path]
+
 		return ok
 	}
 }
@@ -94,5 +95,6 @@ func CountTypes(facts *typefacts.ProjectFacts, pkg *typefacts.PackageFacts) Type
 			counts.Interfaces++
 		}
 	}
+
 	return counts
 }

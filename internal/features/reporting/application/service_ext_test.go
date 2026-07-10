@@ -40,10 +40,13 @@ func report() gomodularity.Report {
 // Black-box: the text format includes the module and the type row.
 func TestWriteText(t *testing.T) {
 	t.Parallel()
+
 	sink := bufSink{&bytes.Buffer{}}
-	if err := reporting.Write(report(), domain.FormatText, sink, domain.TextOptions{}); err != nil {
+	err := reporting.Write(report(), domain.FormatText, sink, domain.TextOptions{})
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	out := sink.buf.String()
 	if !strings.Contains(out, "example.com/m") || !strings.Contains(out, "A") {
 		t.Fatalf("text output missing content:\n%s", out)
@@ -53,14 +56,19 @@ func TestWriteText(t *testing.T) {
 // Black-box: the JSON format is valid and versioned.
 func TestWriteJSON(t *testing.T) {
 	t.Parallel()
+
 	sink := bufSink{&bytes.Buffer{}}
-	if err := reporting.Write(report(), domain.FormatJSON, sink, domain.TextOptions{}); err != nil {
+	err := reporting.Write(report(), domain.FormatJSON, sink, domain.TextOptions{})
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	var got map[string]any
-	if err := json.Unmarshal(sink.buf.Bytes(), &got); err != nil {
+	err = json.Unmarshal(sink.buf.Bytes(), &got)
+	if err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
+
 	if got["schema_version"] != "1" {
 		t.Errorf("schema_version = %v", got["schema_version"])
 	}
@@ -70,17 +78,21 @@ func TestWriteJSON(t *testing.T) {
 // entity/metric.
 func TestWriteCSV(t *testing.T) {
 	t.Parallel()
+
 	sink := bufSink{&bytes.Buffer{}}
 	if err := reporting.Write(report(), domain.FormatCSV, sink, domain.TextOptions{}); err != nil {
 		t.Fatal(err)
 	}
+
 	records, err := csv.NewReader(sink.buf).ReadAll()
 	if err != nil {
 		t.Fatalf("invalid CSV: %v", err)
 	}
+
 	if len(records) < 2 {
 		t.Fatalf("csv has %d rows, want header + data", len(records))
 	}
+
 	header := strings.Join(records[0], ",")
 	if header != strings.Join(domain.CSVHeader(), ",") {
 		t.Errorf("csv header = %q", header)

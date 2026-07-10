@@ -1,7 +1,3 @@
-// Package domain holds the reporting feature's pure rendering logic:
-// output formats, deterministic value formatting, and the text and CSV
-// layouts as plain strings. Serialization to concrete encodings happens in
-// the application layer.
 package domain
 
 import (
@@ -32,6 +28,7 @@ func ParseFormat(name string) (Format, bool) {
 	case FormatText, FormatJSON, FormatCSV:
 		return Format(name), true
 	}
+
 	return "", false
 }
 
@@ -98,6 +95,7 @@ func abbrev(name string) string {
 	if short, ok := columnAbbrev[name]; ok {
 		return short
 	}
+
 	return strings.ToUpper(name)
 }
 
@@ -132,8 +130,10 @@ func (n *treeNode) child(name string) *treeNode {
 			return c
 		}
 	}
+
 	c := &treeNode{name: name}
 	n.children = append(n.children, c)
+
 	return c
 }
 
@@ -143,11 +143,13 @@ func (n *treeNode) child(name string) *treeNode {
 // everything they contain.
 func (n *treeNode) aggregate() {
 	n.typeAgg = make(map[string]*columnStats)
+
 	n.pkgAgg = make(map[string]*columnStats)
 	if n.pkg != nil {
 		n.typesTotal = len(n.pkg.Types)
 		collectPackageStats(n.pkg, n.typeAgg, n.pkgAgg)
 	}
+
 	for _, c := range n.children {
 		c.aggregate()
 		n.typesTotal += c.typesTotal
@@ -166,6 +168,7 @@ func collectPackageStats(pkg *gomodularity.PackageReport, typeAgg, pkgAgg map[st
 			}
 		}
 	}
+
 	for _, r := range pkg.Metrics {
 		if r.Applicable {
 			addStat(pkgAgg, r.Name, r.Value)
@@ -179,6 +182,7 @@ func addStat(m map[string]*columnStats, name string, value float64) {
 		st = &columnStats{min: value, max: value}
 		m[name] = st
 	}
+
 	st.sum += value
 	st.count++
 	st.min = math.Min(st.min, value)
@@ -191,8 +195,10 @@ func mergeStats(dst, src map[string]*columnStats) {
 		if d == nil {
 			c := *s
 			dst[name] = &c
+
 			continue
 		}
+
 		d.sum += s.sum
 		d.count += s.count
 		d.min = math.Min(d.min, s.min)
@@ -209,6 +215,7 @@ func (n *treeNode) compress() {
 		n.pkg = c.pkg
 		n.children = c.children
 	}
+
 	for _, c := range n.children {
 		c.compress()
 	}
@@ -219,22 +226,29 @@ func (n *treeNode) compress() {
 // child per top-level path segment.
 func buildTree(report gomodularity.Report) *treeNode {
 	root := &treeNode{}
+
 	for i := range report.Packages {
 		pkg := &report.Packages[i]
+
 		rel := relPath(pkg.Path, report.Module)
 		if rel == "." {
 			root.pkg = pkg
+
 			continue
 		}
+
 		node := root
-		for _, seg := range strings.Split(rel, "/") {
+		for seg := range strings.SplitSeq(rel, "/") {
 			node = node.child(seg)
 		}
+
 		node.pkg = pkg
 	}
+
 	for _, c := range root.children {
 		c.compress()
 	}
+
 	return root
 }
 
@@ -242,12 +256,15 @@ func relPath(path, module string) string {
 	if module == "" {
 		return path
 	}
+
 	if path == module {
 		return "."
 	}
+
 	if strings.HasPrefix(path, module+"/") {
 		return path[len(module)+1:]
 	}
+
 	return path
 }
 
@@ -265,14 +282,17 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 	b.WriteString(" — schema ")
 	b.WriteString(report.SchemaVersion)
 	b.WriteString("\n")
+
 	if report.Module != "" {
 		b.WriteString("module ")
 		b.WriteString(paint(report.Module, ansiBold, opts.Color))
 		b.WriteString("\n")
 	}
+
 	if len(report.Packages) == 0 {
 		return b.String()
 	}
+
 	b.WriteString("\n")
 
 	table := &textTable{
@@ -281,28 +301,35 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 	}
 
 	header := make([]tableCell, 0, 1+len(table.pkgCols)+len(table.typeCols))
+
 	header = append(header, tableCell{text: "PATH / TYPE", style: ansiDim})
 	for _, name := range append(append([]string{}, table.pkgCols...), table.typeCols...) {
 		header = append(header, tableCell{text: abbrev(name), style: ansiDim})
 	}
+
 	table.rows = append(table.rows, header)
 
 	root := buildTree(report)
+
 	sections := make([]*treeNode, 0, len(root.children)+1)
 	if root.pkg != nil {
 		sections = append(sections, &treeNode{name: ".", pkg: root.pkg})
 	}
+
 	sections = append(sections, root.children...)
 	for i, section := range sections {
 		section.aggregate()
+
 		if i > 0 {
 			table.rows = append(table.rows, nil)
 		}
+
 		table.emitNode(section, "", "")
 	}
 
 	// Global column widths keep every branch aligned as one table.
 	sawNA := false
+
 	widths := make([]int, 1+len(table.pkgCols)+len(table.typeCols))
 	for _, row := range table.rows {
 		for c, cell := range row {
@@ -312,22 +339,28 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 			}
 		}
 	}
+
 	for _, row := range table.rows {
 		if len(row) == 0 {
 			b.WriteString("\n")
+
 			continue
 		}
+
 		last := len(row) - 1
 		for last > 0 && row[last].text == "" && row[last].prefix == "" {
 			last--
 		}
+
 		for c, cell := range row[:last+1] {
 			b.WriteString(cell.prefix)
 			b.WriteString(paint(cell.text, cell.style, opts.Color))
+
 			if c < last {
 				b.WriteString(strings.Repeat(" ", widths[c]-cell.width()+2))
 			}
 		}
+
 		b.WriteString("\n")
 	}
 
@@ -336,9 +369,11 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 		b.WriteString(paint(naCell+" = not applicable", ansiDim, opts.Color))
 		b.WriteString("\n")
 	}
+
 	if opts.Explain {
 		writeNotes(&b, report, opts.Color)
 	}
+
 	return b.String()
 }
 
@@ -366,15 +401,18 @@ func (t *textTable) emitNode(node *treeNode, prefix, connector string) {
 	if node.pkg != nil && len(t.typeCols) > 0 {
 		typeCount = len(node.pkg.Types)
 	}
+
 	total := typeCount + len(node.children)
 
-	for i := 0; i < typeCount; i++ {
+	for i := range typeCount {
 		t.typeRow(node, i, childPrefix, branchGlyph(i, total))
 	}
+
 	for i, child := range node.children {
 		if typeCount+i > 0 {
 			t.rows = append(t.rows, []tableCell{{prefix: childPrefix + "│"}})
 		}
+
 		t.emitNode(child, childPrefix, branchGlyph(typeCount+i, total))
 	}
 }
@@ -385,6 +423,7 @@ func branchGlyph(index, total int) string {
 	if index == total-1 {
 		return "└── "
 	}
+
 	return "├── "
 }
 
@@ -397,6 +436,7 @@ func childIndent(prefix, connector string) string {
 	case "└── ":
 		return prefix + "    "
 	}
+
 	return prefix
 }
 
@@ -414,12 +454,14 @@ func (t *textTable) nodeRow(node *treeNode, label string) {
 			row = append(row, meanCell(node.pkgAgg[name], boundedColorFor(name)))
 		}
 	}
+
 	if node.typesTotal > 0 {
 		for _, name := range t.typeCols {
 			st := node.typeAgg[name]
 			row = append(row, meanCell(st, func(v float64) string { return valueColor(name, v, st) }))
 		}
 	}
+
 	t.rows = append(t.rows, row)
 }
 
@@ -427,26 +469,33 @@ func (t *textTable) nodeRow(node *treeNode, label string) {
 // against the subtree's column ranges.
 func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string) {
 	typ := &node.pkg.Types[index]
+
 	byName := make(map[string]metrics.MetricResult, len(typ.Metrics))
 	for _, r := range typ.Metrics {
 		byName[r.Name] = r
 	}
+
 	row := make([]tableCell, 0, 1+len(t.pkgCols)+len(t.typeCols))
+
 	row = append(row, tableCell{prefix: prefix + connector, text: typ.Name})
 	for range t.pkgCols {
 		row = append(row, tableCell{})
 	}
+
 	for _, name := range t.typeCols {
 		r, ok := byName[name]
 		if !ok || !r.Applicable {
 			row = append(row, naTableCell())
+
 			continue
 		}
+
 		row = append(row, tableCell{
 			text:  formatCell(r.Value),
 			style: valueColor(name, r.Value, node.typeAgg[name]),
 		})
 	}
+
 	t.rows = append(t.rows, row)
 }
 
@@ -457,6 +506,7 @@ func packageMetricCells(pkg *gomodularity.PackageReport, cols []string) []tableC
 	for _, r := range pkg.Metrics {
 		byName[r.Name] = r
 	}
+
 	cells := make([]tableCell, 0, len(cols))
 	for _, name := range cols {
 		r, ok := byName[name]
@@ -469,6 +519,7 @@ func packageMetricCells(pkg *gomodularity.PackageReport, cols []string) []tableC
 			cells = append(cells, tableCell{text: formatCell(r.Value), style: ansiBold + boundedColor(name, r.Value)})
 		}
 	}
+
 	return cells
 }
 
@@ -478,7 +529,9 @@ func meanCell(st *columnStats, color func(float64) string) tableCell {
 	if st == nil || st.count == 0 {
 		return naTableCell()
 	}
+
 	value := st.sum / float64(st.count)
+
 	return tableCell{text: formatCell(value), style: ansiBold + color(value)}
 }
 
@@ -500,17 +553,21 @@ type columnStats struct {
 // report, in the fixed metric order.
 func packageColumns(report gomodularity.Report) []string {
 	present := make(map[string]bool)
+
 	for i := range report.Packages {
 		for _, r := range report.Packages[i].Metrics {
 			present[r.Name] = true
 		}
 	}
+
 	var cols []string
+
 	for _, name := range metrics.PackageMetricOrder() {
 		if present[name] {
 			cols = append(cols, name)
 		}
 	}
+
 	return cols
 }
 
@@ -518,6 +575,7 @@ func packageColumns(report gomodularity.Report) []string {
 // report, in the fixed metric order.
 func reportColumns(report gomodularity.Report) []string {
 	present := make(map[string]bool)
+
 	for i := range report.Packages {
 		for j := range report.Packages[i].Types {
 			for _, r := range report.Packages[i].Types[j].Metrics {
@@ -525,12 +583,15 @@ func reportColumns(report gomodularity.Report) []string {
 			}
 		}
 	}
+
 	var cols []string
+
 	for _, name := range metrics.TypeMetricOrder() {
 		if present[name] {
 			cols = append(cols, name)
 		}
 	}
+
 	return cols
 }
 
@@ -538,21 +599,27 @@ func reportColumns(report gomodularity.Report) []string {
 // from table cells.
 func writeNotes(b *strings.Builder, report gomodularity.Report, color bool) {
 	wrote := false
+
 	for i := range report.Packages {
 		pkg := &report.Packages[i]
+
 		notes := packageNotes(pkg)
 		if len(notes) == 0 {
 			continue
 		}
+
 		if !wrote {
 			b.WriteString("\n")
 			b.WriteString(paint("notes", ansiDim, color))
 			b.WriteString("\n")
+
 			wrote = true
 		}
+
 		b.WriteString("  ")
 		b.WriteString(paint(pkg.Path, ansiDim, color))
 		b.WriteString("\n")
+
 		for _, note := range notes {
 			b.WriteString("    ")
 			b.WriteString(paint(note, ansiDim, color))
@@ -567,40 +634,50 @@ func writeNotes(b *strings.Builder, report gomodularity.Report, color bool) {
 // full of method-less types bury the table under repeated boilerplate.
 func packageNotes(pkg *gomodularity.PackageReport) []string {
 	var notes []string
+
 	for _, r := range pkg.Metrics {
 		if r.Reason != "" {
 			notes = append(notes, r.Name+": "+r.Reason)
 		}
 	}
+
 	for _, name := range metrics.TypeMetricOrder() {
 		type entry struct {
 			reason string
 			types  []string
 		}
+
 		var entries []entry
+
 		index := make(map[string]int)
+
 		for i := range pkg.Types {
 			for _, r := range pkg.Types[i].Metrics {
 				if r.Name != name || r.Reason == "" {
 					continue
 				}
+
 				j, ok := index[r.Reason]
 				if !ok {
 					j = len(entries)
 					index[r.Reason] = j
 					entries = append(entries, entry{reason: r.Reason})
 				}
+
 				entries[j].types = append(entries[j].types, pkg.Types[i].Name)
 			}
 		}
+
 		for _, e := range entries {
 			who := strings.Join(e.types, ", ")
 			if len(e.types) == len(pkg.Types) && len(pkg.Types) > 1 {
 				who = "all types"
 			}
+
 			notes = append(notes, name+": "+e.reason+" ("+who+")")
 		}
 	}
+
 	return notes
 }
 
@@ -618,12 +695,15 @@ func valueColor(name string, value float64, st *columnStats) string {
 	if !ok {
 		return ""
 	}
+
 	if !q.bounded {
 		if st == nil || st.max == st.min {
 			return ""
 		}
+
 		value = (value - st.min) / (st.max - st.min)
 	}
+
 	return thresholdColor(q.lowerBetter, value)
 }
 
@@ -634,6 +714,7 @@ func boundedColor(name string, value float64) string {
 	if !ok || !q.bounded {
 		return ""
 	}
+
 	return thresholdColor(q.lowerBetter, value)
 }
 
@@ -641,6 +722,7 @@ func thresholdColor(lowerBetter bool, score float64) string {
 	if lowerBetter {
 		score = 1 - score
 	}
+
 	switch {
 	case score >= 0.66:
 		return ansiGreen
@@ -656,6 +738,7 @@ func paint(text, style string, enabled bool) string {
 	if !enabled || style == "" {
 		return text
 	}
+
 	return style + text + ansiReset
 }
 
@@ -668,24 +751,29 @@ func CSVHeader() []string {
 // report order.
 func CSVRecords(report gomodularity.Report) [][]string {
 	var records [][]string
+
 	appendRecords := func(pkgPath, typeName string, results []metrics.MetricResult) {
 		for _, r := range results {
 			value := ""
 			if r.Applicable {
 				value = FormatValue(r.Value)
 			}
+
 			records = append(records, []string{
 				pkgPath, typeName, r.Name, string(r.Scope), value,
 				strconv.FormatBool(r.Applicable), r.Reason, r.Definition,
 			})
 		}
 	}
+
 	for i := range report.Packages {
 		pkg := &report.Packages[i]
 		appendRecords(pkg.Path, "", pkg.Metrics)
+
 		for j := range pkg.Types {
 			appendRecords(pkg.Path, pkg.Types[j].Name, pkg.Types[j].Metrics)
 		}
 	}
+
 	return records
 }

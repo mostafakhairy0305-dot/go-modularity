@@ -40,6 +40,7 @@ func tableReport() gomodularity.Report {
 
 func mustMatch(t *testing.T, got, pattern string) {
 	t.Helper()
+
 	if !regexp.MustCompile(pattern).MatchString(got) {
 		t.Errorf("output does not match %q\ngot:\n%s", pattern, got)
 	}
@@ -56,9 +57,11 @@ func TestTextTreeTableLayout(t *testing.T) {
 	mustMatch(t, got, `(?m)^├── Cart\s+2\.00\s+0\.75$`)
 	mustMatch(t, got, `(?m)^└── Order\s+6\.00\s+–$`)
 	mustMatch(t, got, `(?m)^– = not applicable$`)
+
 	if strings.Contains(got, "mean") {
 		t.Errorf("output still contains a separate mean row:\n%s", got)
 	}
+
 	if strings.Contains(got, "\x1b[") {
 		t.Errorf("uncolored output contains ANSI escapes:\n%q", got)
 	}
@@ -104,6 +107,7 @@ func TestTextReasonsOnlyWithExplain(t *testing.T) {
 	}
 
 	got := Text(report, TextOptions{Explain: true})
+
 	wantLines := []string{
 		"notes",
 		"  example.com/mod",
@@ -136,6 +140,7 @@ func TestTextColorAppliesQualityAndBold(t *testing.T) {
 	if !strings.Contains(got, ansiGreen+"2.00"+ansiReset) {
 		t.Errorf("best AMC not green:\n%q", got)
 	}
+
 	if !strings.Contains(got, ansiRed+"6.00"+ansiReset) {
 		t.Errorf("worst AMC not red:\n%q", got)
 	}

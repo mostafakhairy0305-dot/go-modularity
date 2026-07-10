@@ -15,6 +15,7 @@ func AMC(totalComplexity, methodCount int) MetricResult {
 	if methodCount == 0 {
 		return notApplicable(MetricAMC, ScopeType, DefinitionAMC, "type has no methods")
 	}
+
 	return applicable(MetricAMC, ScopeType, DefinitionAMC,
 		float64(totalComplexity)/float64(methodCount))
 }

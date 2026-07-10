@@ -9,14 +9,18 @@ import (
 
 func TestRunIndexedResults(t *testing.T) {
 	const n = 100
+
 	results := make([]int, n)
+
 	err := Run(context.Background(), 8, n, func(i int) error {
 		results[i] = i * i
+
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for i, v := range results {
 		if v != i*i {
 			t.Fatalf("results[%d] = %d", i, v)
@@ -26,10 +30,12 @@ func TestRunIndexedResults(t *testing.T) {
 
 func TestRunFirstErrorByIndex(t *testing.T) {
 	wantErr := errors.New("boom")
+
 	err := Run(context.Background(), 4, 10, func(i int) error {
 		if i == 3 || i == 7 {
 			return wantErr
 		}
+
 		return nil
 	})
 	if !errors.Is(err, wantErr) {
@@ -40,6 +46,7 @@ func TestRunFirstErrorByIndex(t *testing.T) {
 func TestRunCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
+
 	err := Run(ctx, 2, 1000, func(i int) error { return nil })
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled", err)
@@ -47,7 +54,8 @@ func TestRunCancellation(t *testing.T) {
 }
 
 func TestRunZeroTasks(t *testing.T) {
-	if err := Run(context.Background(), 4, 0, func(int) error { return nil }); err != nil {
+	err := Run(context.Background(), 4, 0, func(int) error { return nil })
+	if err != nil {
 		t.Fatal(err)
 	}
 }
@@ -57,15 +65,19 @@ func TestWorkers(t *testing.T) {
 	if got := Workers(0, 1000); got != maxProcs {
 		t.Fatalf("Workers(0, 1000) = %d, want %d", got, maxProcs)
 	}
+
 	if got := Workers(0, 1); got != 1 {
 		t.Fatalf("Workers(0, 1) = %d, want 1", got)
 	}
+
 	if got := Workers(3, 1000); got != 3 {
 		t.Fatalf("Workers(3, 1000) = %d, want 3", got)
 	}
+
 	if got := Workers(64, 2); got != 2 {
 		t.Fatalf("Workers(64, 2) = %d, want 2", got)
 	}
+
 	if got := Workers(0, 0); got != 1 {
 		t.Fatalf("Workers(0, 0) = %d, want 1", got)
 	}

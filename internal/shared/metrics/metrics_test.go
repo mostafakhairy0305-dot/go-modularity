@@ -10,9 +10,11 @@ const epsilon = 1e-12
 
 func assertApplicable(t *testing.T, r MetricResult, want float64) {
 	t.Helper()
+
 	if !r.Applicable {
 		t.Fatalf("%s: not applicable (%s), want value %v", r.Name, r.Reason, want)
 	}
+
 	if math.Abs(r.Value-want) > epsilon {
 		t.Fatalf("%s: value %v, want %v", r.Name, r.Value, want)
 	}
@@ -20,12 +22,15 @@ func assertApplicable(t *testing.T, r MetricResult, want float64) {
 
 func assertNotApplicable(t *testing.T, r MetricResult) {
 	t.Helper()
+
 	if r.Applicable {
 		t.Fatalf("%s: applicable with value %v, want not applicable", r.Name, r.Value)
 	}
+
 	if r.Reason == "" {
 		t.Fatalf("%s: not applicable without a reason", r.Name)
 	}
+
 	if r.Definition == "" {
 		t.Fatalf("%s: missing definition", r.Name)
 	}
@@ -83,9 +88,11 @@ func TestInstability(t *testing.T) {
 	// Isolated package: defined as maximally stable, with a reason.
 	isolated := Instability(0, 0)
 	assertApplicable(t, isolated, 0)
+
 	if isolated.Reason == "" {
 		t.Fatal("isolated instability should carry the defined-as-0 reason")
 	}
+
 	assertApplicable(t, Instability(1, 0), 0)
 	assertApplicable(t, Instability(0, 2), 1)
 	assertApplicable(t, Instability(1, 3), 0.75)
@@ -112,6 +119,7 @@ func TestReusabilityAllComponents(t *testing.T) {
 		weights,
 	)
 	assertApplicable(t, r, 1)
+
 	if r.Reason != "" {
 		t.Fatalf("no dropped components expected, got reason %q", r.Reason)
 	}
@@ -129,6 +137,7 @@ func TestReusabilityRenormalization(t *testing.T) {
 	)
 	want := (0.25*0.5 + 0.25*1 + 0.15*0) / 0.65
 	assertApplicable(t, r, want)
+
 	if !strings.Contains(r.Reason, ComponentCohesion) {
 		t.Fatalf("reason %q does not list the dropped component", r.Reason)
 	}
@@ -161,50 +170,65 @@ func TestReusabilityComponents(t *testing.T) {
 	if c := CohesionComponent(LCOM96b(3, 3, 3)); !c.Applicable || math.Abs(c.Value-1.0/3) > epsilon {
 		t.Fatalf("cohesion component = %+v", c)
 	}
+
 	if c := CohesionComponent(LCOM96b(0, 0, 3)); c.Applicable {
 		t.Fatalf("cohesion component should drop when LCOM96b is n/a")
 	}
+
 	if c := CouplingComponent(0); !c.Applicable || c.Value != 1 {
 		t.Fatalf("coupling component at CBO=0 = %+v", c)
 	}
+
 	if c := CouplingComponent(3); math.Abs(c.Value-0.25) > epsilon {
 		t.Fatalf("coupling component at CBO=3 = %+v", c)
 	}
+
 	if c := TestabilityComponent(AMC(1, 1)); !c.Applicable || c.Value != 1 {
 		t.Fatalf("testability component at AMC=1 = %+v", c)
 	}
+
 	if c := TestabilityComponent(AMC(3, 1)); math.Abs(c.Value-1.0/3) > epsilon {
 		t.Fatalf("testability component at AMC=3 = %+v", c)
 	}
+
 	if c := TestabilityComponent(AMC(0, 0)); c.Applicable {
 		t.Fatalf("testability component should drop when AMC is n/a")
 	}
+
 	if c := DocumentationComponent(2, 4); !c.Applicable || c.Value != 0.5 {
 		t.Fatalf("documentation component = %+v", c)
 	}
+
 	if c := DocumentationComponent(0, 0); c.Applicable {
 		t.Fatalf("documentation component should drop with no exported members")
 	}
 }
 
 func TestWeightsValidate(t *testing.T) {
-	if err := DefaultReusabilityWeights().Validate(); err != nil {
+	err := DefaultReusabilityWeights().Validate()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (ReusabilityWeights{Cohesion: -1}).Validate(); err == nil {
+
+	err = (ReusabilityWeights{Cohesion: -1}).Validate()
+	if err == nil {
 		t.Fatal("negative weight accepted")
 	}
-	if err := (ReusabilityWeights{}).Validate(); err == nil {
+
+	err = (ReusabilityWeights{}).Validate()
+	if err == nil {
 		t.Fatal("all-zero weights accepted")
 	}
 }
 
 func TestClosure(t *testing.T) {
 	got := Closure([]string{MetricReusability})
+
 	want := []string{MetricAMC, MetricLCOM96b, MetricCBO, MetricReusability}
 	if len(got) != len(want) {
 		t.Fatalf("closure = %v, want %v", got, want)
 	}
+
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("closure = %v, want %v", got, want)
@@ -212,6 +236,7 @@ func TestClosure(t *testing.T) {
 	}
 
 	got = Closure([]string{MetricDistance})
+
 	want = []string{MetricAbstractness, MetricInstability, MetricDistance}
 	if len(got) != len(want) {
 		t.Fatalf("closure = %v, want %v", got, want)

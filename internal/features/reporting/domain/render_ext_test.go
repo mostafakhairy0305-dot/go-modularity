@@ -12,11 +12,13 @@ import (
 // Black-box: format parsing accepts the known encodings and rejects others.
 func TestParseFormat(t *testing.T) {
 	t.Parallel()
+
 	for _, name := range []string{"text", "json", "csv"} {
 		if f, ok := reporting.ParseFormat(name); !ok || string(f) != name {
 			t.Errorf("ParseFormat(%q) = %v,%v", name, f, ok)
 		}
 	}
+
 	if _, ok := reporting.ParseFormat("xml"); ok {
 		t.Error("xml must be rejected")
 	}
@@ -26,6 +28,7 @@ func TestParseFormat(t *testing.T) {
 // header/records.
 func TestTextAndCSVRendering(t *testing.T) {
 	t.Parallel()
+
 	rep := gomodularity.Report{
 		SchemaVersion: "1",
 		Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "t"},
@@ -43,12 +46,15 @@ func TestTextAndCSVRendering(t *testing.T) {
 	if !strings.Contains(text, "example.com/m") || !strings.Contains(text, "A") {
 		t.Errorf("text output missing content:\n%s", text)
 	}
+
 	if len(reporting.CSVHeader()) == 0 {
 		t.Error("empty CSV header")
 	}
+
 	if len(reporting.CSVRecords(rep)) == 0 {
 		t.Error("no CSV records produced")
 	}
+
 	if reporting.FormatValue(0.5) == "" {
 		t.Error("FormatValue produced empty string")
 	}

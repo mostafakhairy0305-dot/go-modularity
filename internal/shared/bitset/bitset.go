@@ -1,8 +1,3 @@
-// Package bitset provides compact field-usage sets for method-pair
-// calculations, in the style of the slices and maps packages: small value
-// types plus package-level set operations. The single-word SmallFieldSet
-// is the fast path for types with at most 64 fields, FieldSet the general
-// path.
 package bitset
 
 import "math/bits"
@@ -30,6 +25,7 @@ func NewFieldSet(size int) FieldSet {
 	if size <= 0 {
 		return FieldSet{}
 	}
+
 	return FieldSet{words: make([]uint64, (size+wordBits-1)/wordBits)}
 }
 
@@ -44,6 +40,7 @@ func Contains(f FieldSet, index int) bool {
 	if word >= len(f.words) {
 		return false
 	}
+
 	return f.words[word]&(1<<uint(index%wordBits)) != 0
 }
 
@@ -53,6 +50,7 @@ func Count(f FieldSet) int {
 	for _, word := range f.words {
 		total += bits.OnesCount64(word)
 	}
+
 	return total
 }
 
@@ -66,11 +64,12 @@ func Union(dst, src FieldSet) {
 // Intersects reports whether the two sets share any field.
 func Intersects(a, b FieldSet) bool {
 	n := min(len(a.words), len(b.words))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if a.words[i]&b.words[i] != 0 {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -79,8 +78,10 @@ func Clone(f FieldSet) FieldSet {
 	if f.words == nil {
 		return FieldSet{}
 	}
+
 	words := make([]uint64, len(f.words))
 	copy(words, f.words)
+
 	return FieldSet{words: words}
 }
 
@@ -90,6 +91,7 @@ func Small(f FieldSet) SmallFieldSet {
 	if len(f.words) == 0 {
 		return SmallFieldSet{}
 	}
+
 	return SmallFieldSet{bits: f.words[0]}
 }
 

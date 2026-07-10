@@ -14,6 +14,7 @@ import (
 // end to end (compiler load → facts → metrics).
 func TestAnalyzeFixture(t *testing.T) {
 	t.Parallel()
+
 	result, err := analyzer.NewAnalyzer().Analyze(context.Background(), inbound.Options{
 		Directory:       filepath.Join("..", "..", "..", "testdata", "fixture"),
 		Patterns:        []string{"./..."},
@@ -24,9 +25,11 @@ func TestAnalyzeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if result.ModulePath != "example.com/fixture" {
 		t.Fatalf("module = %q", result.ModulePath)
 	}
+
 	if len(result.Packages) < 7 {
 		t.Fatalf("packages = %d, want >= 7", len(result.Packages))
 	}

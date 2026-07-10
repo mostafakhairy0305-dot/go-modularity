@@ -1,5 +1,3 @@
-// Package inbound declares the projectanalysis feature's inbound port: the
-// contract through which the public API and the CLI drive an analysis run.
 package inbound
 
 import (

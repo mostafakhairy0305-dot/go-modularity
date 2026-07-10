@@ -13,6 +13,7 @@ func fieldSet(size int, indices ...int) bitset.FieldSet {
 	for _, i := range indices {
 		s.Set(i)
 	}
+
 	return s
 }
 
@@ -22,6 +23,7 @@ func TestCountPairsSmallPath(t *testing.T) {
 		fieldSet(3, 0, 1),
 		fieldSet(3, 2),
 	}
+
 	counts := CountPairs(sets, 3)
 	if counts.Sharing != 1 || counts.NonSharing != 2 {
 		t.Fatalf("counts = %+v, want sharing 1, non-sharing 2", counts)
@@ -35,6 +37,7 @@ func TestCountPairsGeneralPath(t *testing.T) {
 		fieldSet(70, 69, 1),
 		fieldSet(70, 5),
 	}
+
 	counts := CountPairs(sets, 70)
 	if counts.Sharing != 1 || counts.NonSharing != 2 {
 		t.Fatalf("counts = %+v, want sharing 1, non-sharing 2", counts)
@@ -72,6 +75,7 @@ func TestEffectiveFieldSetsTransitive(t *testing.T) {
 	if !bitset.Contains(transitive[0], 1) {
 		t.Fatal("a should reach c's field through b (fixpoint)")
 	}
+
 	if bitset.Count(transitive[1]) != 1 || !bitset.Contains(transitive[1], 1) {
 		t.Fatal("b should absorb c's field")
 	}
@@ -87,6 +91,7 @@ func TestParamMatrix(t *testing.T) {
 		{ParamTypeKeys: []string{"int"}},
 		{},
 	}
+
 	oneCells, distinct := ParamMatrix(methods)
 	if oneCells != 3 || distinct != 2 {
 		t.Fatalf("oneCells = %d, distinct = %d; want 3, 2", oneCells, distinct)

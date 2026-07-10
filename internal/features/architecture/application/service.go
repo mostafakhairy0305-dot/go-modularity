@@ -1,6 +1,3 @@
-// Package application orchestrates the architecture feature: it builds the
-// package dependency graph once and computes Abstractness, Instability, and
-// Distance from the Main Sequence exactly once per package.
 package application
 
 import (
@@ -23,6 +20,7 @@ type Result struct {
 // package, indexed by package ID.
 func ComputeForPackages(facts *typefacts.ProjectFacts, scope domain.Scope) []Result {
 	graph := domain.BuildDependencyGraph(facts, scope)
+
 	results := make([]Result, len(facts.Packages))
 	for i := range facts.Packages {
 		counts := domain.CountTypes(facts, &facts.Packages[i])
@@ -36,5 +34,6 @@ func ComputeForPackages(facts *typefacts.ProjectFacts, scope domain.Scope) []Res
 			Distance:     metrics.Distance(abstractness, instability),
 		}
 	}
+
 	return results
 }

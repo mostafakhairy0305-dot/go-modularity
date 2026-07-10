@@ -27,11 +27,14 @@ var dependencies = map[string][]string{
 // not rendered unless also selected.
 func Closure(selected []string) []string {
 	seen := make(map[string]bool, len(selected))
+
 	var visit func(name string)
+
 	visit = func(name string) {
 		if seen[name] {
 			return
 		}
+
 		seen[name] = true
 		for _, dep := range dependencies[name] {
 			visit(dep)
@@ -47,10 +50,12 @@ func Closure(selected []string) []string {
 			closure = append(closure, name)
 		}
 	}
+
 	for _, name := range PackageMetricOrder() {
 		if seen[name] {
 			closure = append(closure, name)
 		}
 	}
+
 	return closure
 }

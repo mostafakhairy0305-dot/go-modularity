@@ -64,6 +64,7 @@ func run(args []string) int {
 
 	if *showVersion {
 		fmt.Println("go-modularity " + version.Version)
+
 		return 0
 	}
 
@@ -71,11 +72,13 @@ func run(args []string) int {
 	if *verbose {
 		level = slog.LevelDebug
 	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 
 	reportFormat, ok := reportingdomain.ParseFormat(*format)
 	if !ok {
 		logger.Error("invalid format", "format", *format, "want", "text, json, or csv")
+
 		return 2
 	}
 
@@ -86,10 +89,12 @@ func run(args []string) int {
 		stopProfile, err := profiling.StartCPU(*cpuProfile)
 		if err != nil {
 			logger.Error("cpu profiling failed", "error", err)
+
 			return 1
 		}
 		defer func() {
-			if err := stopProfile(); err != nil {
+			err := stopProfile()
+			if err != nil {
 				logger.Error("cpu profiling failed", "error", err)
 			}
 		}()
@@ -108,17 +113,22 @@ func run(args []string) int {
 	}
 
 	start := time.Now()
+
 	report, err := gomodularity.Analyze(ctx, config)
 	if err != nil {
 		logger.Error("analysis failed", "error", err)
+
 		return 1
 	}
+
 	logger.Debug("analysis complete",
 		"packages", len(report.Packages), "duration", time.Since(start))
 
 	if *memoryProfile != "" {
-		if err := profiling.WriteHeap(*memoryProfile); err != nil {
+		err := profiling.WriteHeap(*memoryProfile)
+		if err != nil {
 			logger.Error("memory profiling failed", "error", err)
+
 			return 1
 		}
 	}
@@ -127,14 +137,17 @@ func run(args []string) int {
 	if *output != "" {
 		sink = sinks.FileSink{Path: *output}
 	}
+
 	textOptions := reportingdomain.TextOptions{
 		Color:   *output == "" && os.Getenv("NO_COLOR") == "" && stdoutIsTerminal(),
 		Explain: *explain,
 	}
 	if err := reporting.Write(report, reportFormat, sink, textOptions); err != nil {
 		logger.Error("writing report failed", "error", err)
+
 		return 1
 	}
+
 	return 0
 }
 
@@ -142,6 +155,7 @@ func run(args []string) int {
 // colors never leak into pipes or redirected files.
 func stdoutIsTerminal() bool {
 	info, err := os.Stdout.Stat()
+
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
@@ -149,13 +163,16 @@ func splitList(list string) []string {
 	if list == "" {
 		return nil
 	}
+
 	parts := strings.Split(list, ",")
+
 	out := make([]string, 0, len(parts))
 	for _, part := range parts {
 		if part = strings.TrimSpace(part); part != "" {
 			out = append(out, part)
 		}
 	}
+
 	return out
 }
 
@@ -164,9 +181,11 @@ func parseMetrics(list string) []gomodularity.MetricName {
 	if len(parts) == 0 {
 		return nil
 	}
+
 	out := make([]gomodularity.MetricName, len(parts))
 	for i, part := range parts {
 		out[i] = gomodularity.MetricName(part)
 	}
+
 	return out
 }

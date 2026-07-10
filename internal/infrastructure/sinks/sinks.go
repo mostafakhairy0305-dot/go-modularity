@@ -1,5 +1,3 @@
-// Package sinks provides the reporting sink adapters: standard output
-// and file destinations.
 package sinks
 
 import (
@@ -30,7 +28,7 @@ func (StdoutSink) Open() (io.WriteCloser, error) {
 type stdoutStream struct{ *bufio.Writer }
 
 // Close flushes buffered output without closing stdout.
-func (s stdoutStream) Close() error { return s.Writer.Flush() }
+func (s stdoutStream) Close() error { return s.Flush() }
 
 // FileSink writes the report to a file, truncating any existing content.
 type FileSink struct {

@@ -22,8 +22,10 @@ func (e errSource) Load(context.Context, tfoutbound.FactOptions) (string, []tfdo
 // Black-box: a fact-source failure propagates out of Analyze.
 func TestPipelineLoadError(t *testing.T) {
 	t.Parallel()
+
 	sentinel := errors.New("load failed")
 	pipeline := projectanalysis.NewPipeline(typefacts.NewService(errSource{err: sentinel}))
+
 	_, err := pipeline.Analyze(context.Background(), inbound.Options{
 		Patterns: []string{"./..."},
 		Weights:  metrics.DefaultReusabilityWeights(),
@@ -36,7 +38,9 @@ func TestPipelineLoadError(t *testing.T) {
 // Black-box: invalid reusability weights fail before any loading happens.
 func TestPipelineBadWeights(t *testing.T) {
 	t.Parallel()
+
 	pipeline := projectanalysis.NewPipeline(typefacts.NewService(fakeSource{mod: "example.com/m"}))
+
 	_, err := pipeline.Analyze(context.Background(), inbound.Options{
 		Patterns:        []string{"./..."},
 		SelectedMetrics: []string{metrics.MetricReusability},

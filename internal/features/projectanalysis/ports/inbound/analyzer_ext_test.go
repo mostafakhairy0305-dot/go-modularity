@@ -21,11 +21,14 @@ func (f fakeAnalyzer) Analyze(context.Context, inbound.Options) (inbound.Result,
 // Black-box: an external Analyzer can be built and driven through the port.
 func TestAnalyzerImplementable(t *testing.T) {
 	t.Parallel()
+
 	var a inbound.Analyzer = fakeAnalyzer{result: inbound.Result{ModulePath: "example.com/m"}}
+
 	got, err := a.Analyze(context.Background(), inbound.Options{Patterns: []string{"./..."}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if got.ModulePath != "example.com/m" {
 		t.Fatalf("ModulePath = %q", got.ModulePath)
 	}

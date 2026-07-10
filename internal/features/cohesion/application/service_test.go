@@ -12,12 +12,14 @@ func fieldSet(size int, idx ...int) bitset.FieldSet {
 	for _, i := range idx {
 		s.Set(i)
 	}
+
 	return s
 }
 
 // White-box: two methods over disjoint fields are maximally incohesive.
 func TestComputeForTypeDisjoint(t *testing.T) {
 	t.Parallel()
+
 	tf := &typefacts.TypeFacts{
 		Fields: []typefacts.FieldFacts{{Name: "a"}, {Name: "b"}},
 		Methods: []typefacts.MethodFacts{
@@ -41,6 +43,7 @@ func TestComputeForTypeDisjoint(t *testing.T) {
 // making the two methods share and become cohesive.
 func TestComputeForTypeTransitive(t *testing.T) {
 	t.Parallel()
+
 	tf := &typefacts.TypeFacts{
 		Fields: []typefacts.FieldFacts{{Name: "a"}, {Name: "b"}},
 		Methods: []typefacts.MethodFacts{
@@ -54,6 +57,7 @@ func TestComputeForTypeTransitive(t *testing.T) {
 	if direct.TCC.Value != 0 {
 		t.Errorf("direct TCC = %v, want 0", direct.TCC.Value)
 	}
+
 	if transitive.TCC.Value != 1 {
 		t.Errorf("transitive TCC = %v, want 1 (M1 now shares via M2)", transitive.TCC.Value)
 	}

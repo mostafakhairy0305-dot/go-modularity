@@ -1,7 +1,3 @@
-// Package goloader is the compiler adapter behind typefacts' outbound fact
-// source port. It is the only place in the project that imports
-// go/packages, go/types, and go/ast, and it produces facts only — no metric
-// formula is evaluated here.
 package goloader
 
 import (
@@ -49,11 +45,14 @@ func load(ctx context.Context, opts outbound.FactOptions) (string, []domain.Pack
 	if err != nil {
 		return "", nil, err
 	}
+
 	modulePath := mainModulePath(pkgs)
+
 	extracts, err := extractAll(ctx, pkgs, opts, modulePath)
 	if err != nil {
 		return "", nil, err
 	}
+
 	return modulePath, extracts, nil
 }
 
@@ -79,6 +78,7 @@ func loadPackages(ctx context.Context, opts outbound.FactOptions) ([]*packages.P
 	if err != nil {
 		return nil, fmt.Errorf("load packages: %w", err)
 	}
+
 	if len(loaded) == 0 {
 		return nil, fmt.Errorf("no packages matched patterns %v", patterns)
 	}
@@ -87,9 +87,11 @@ func loadPackages(ctx context.Context, opts outbound.FactOptions) ([]*packages.P
 	if err != nil {
 		return nil, err
 	}
+
 	if len(pkgs) == 0 {
 		return nil, fmt.Errorf("no loadable packages matched patterns %v", patterns)
 	}
+
 	return pkgs, nil
 }
 
@@ -100,10 +102,12 @@ func extractAll(ctx context.Context, pkgs []*packages.Package, opts outbound.Fac
 	for _, p := range pkgs {
 		analyzed[p.PkgPath] = true
 	}
+
 	baseDir := resolveBaseDir(opts.Directory)
 
 	extracts := make([]domain.PackageExtract, len(pkgs))
 	workers := workerpool.Workers(opts.Workers, len(pkgs))
+
 	err := workerpool.Run(ctx, workers, len(pkgs), func(i int) error {
 		pkg := pkgs[i]
 		extracts[i] = extractPackage(pkg, extractorOptions{
@@ -117,11 +121,13 @@ func extractAll(ctx context.Context, pkgs []*packages.Package, opts outbound.Fac
 		pkg.Syntax = nil
 		pkg.TypesInfo = nil
 		pkg.Types = nil
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return extracts, nil
 }
 
@@ -130,52 +136,67 @@ func extractAll(ctx context.Context, pkgs []*packages.Package, opts outbound.Fac
 // applies the error policy.
 func selectPackages(loaded []*packages.Package, continueOnError bool) ([]*packages.Package, error) {
 	byPath := make(map[string]*packages.Package, len(loaded))
+
 	order := make([]string, 0, len(loaded))
 	for _, p := range loaded {
 		if strings.HasSuffix(p.PkgPath, ".test") {
 			continue // synthesized test main package
 		}
+
 		existing, ok := byPath[p.PkgPath]
 		if !ok {
 			byPath[p.PkgPath] = p
 			order = append(order, p.PkgPath)
+
 			continue
 		}
+
 		if len(p.CompiledGoFiles) > len(existing.CompiledGoFiles) {
 			byPath[p.PkgPath] = p
 		}
 	}
 
 	var errs []string
+
 	pkgs := make([]*packages.Package, 0, len(order))
 	for _, path := range order {
 		p := byPath[path]
+
 		broken := len(p.Errors) > 0 || p.Types == nil || p.TypesInfo == nil
 		if !broken {
 			pkgs = append(pkgs, p)
+
 			continue
 		}
+
 		if continueOnError {
 			continue
 		}
+
 		for _, e := range p.Errors {
 			errs = append(errs, fmt.Sprintf("%s: %s", path, e.Msg))
 		}
+
 		if len(p.Errors) == 0 {
-			errs = append(errs, fmt.Sprintf("%s: type information unavailable", path))
+			errs = append(errs, path+": type information unavailable")
 		}
 	}
+
 	if len(errs) > 0 {
 		const maxShown = 10
+
 		shown := errs
 		suffix := ""
+
 		if len(shown) > maxShown {
 			shown = shown[:maxShown]
 			suffix = fmt.Sprintf("\n… and %d more", len(errs)-maxShown)
 		}
+
 		return nil, fmt.Errorf("package load errors (use ContinueOnError to skip):\n%s%s",
 			strings.Join(shown, "\n"), suffix)
 	}
+
 	return pkgs, nil
 }
 
@@ -186,11 +207,13 @@ func mainModulePath(pkgs []*packages.Package) string {
 			return p.Module.Path
 		}
 	}
+
 	for _, p := range pkgs {
 		if p.Module != nil {
 			return p.Module.Path
 		}
 	}
+
 	return ""
 }
 
@@ -201,10 +224,13 @@ func resolveBaseDir(dir string) string {
 		if wd, err := os.Getwd(); err == nil {
 			return wd
 		}
+
 		return ""
 	}
+
 	if abs, err := filepath.Abs(dir); err == nil {
 		return abs
 	}
+
 	return dir
 }

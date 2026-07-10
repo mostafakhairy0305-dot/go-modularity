@@ -1,5 +1,3 @@
-// Package outbound declares the reporting feature's outbound port: the
-// destination a rendered report is written to.
 package outbound
 
 import "io"

@@ -9,6 +9,7 @@ import (
 // White-box: the cyclomatic formula over branch facts.
 func TestCyclomatic(t *testing.T) {
 	t.Parallel()
+
 	tests := []struct {
 		name string
 		b    typefacts.BranchStats
@@ -26,6 +27,7 @@ func TestCyclomatic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			if got := Cyclomatic(tt.b); got != tt.want {
 				t.Errorf("Cyclomatic(%+v) = %d, want %d", tt.b, got, tt.want)
 			}

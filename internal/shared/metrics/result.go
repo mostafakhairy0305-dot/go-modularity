@@ -1,8 +1,3 @@
-// Package metrics contains the pure modularity metric formulas.
-//
-// Every formula takes plain scalar inputs and returns a MetricResult. The
-// package imports no Go compiler package (go/ast, go/types, go/packages, …):
-// callers derive the scalars from source facts and pass them in.
 package metrics
 
 // MetricScope identifies the kind of entity a metric describes.

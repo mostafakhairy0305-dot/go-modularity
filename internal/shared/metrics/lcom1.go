@@ -17,12 +17,12 @@ func LCOM1(nonSharingPairs, sharingPairs, methodCount, fieldCount int) MetricRes
 		return notApplicable(MetricLCOM1, ScopeType, DefinitionLCOM1,
 			"type has fewer than 2 methods")
 	}
+
 	if fieldCount == 0 {
 		return notApplicable(MetricLCOM1, ScopeType, DefinitionLCOM1, "type has no fields")
 	}
-	value := nonSharingPairs - sharingPairs
-	if value < 0 {
-		value = 0
-	}
+
+	value := max(nonSharingPairs-sharingPairs, 0)
+
 	return applicable(MetricLCOM1, ScopeType, DefinitionLCOM1, float64(value))
 }

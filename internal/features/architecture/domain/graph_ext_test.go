@@ -10,11 +10,14 @@ import (
 // Black-box: coupling counts and type tallies from the exported entry points.
 func TestGraphAndCounts(t *testing.T) {
 	t.Parallel()
+
 	facts := &typefacts.ProjectFacts{
 		ModulePath: "example.com/m",
 		Packages: []typefacts.PackageFacts{
-			{ID: 0, Path: "example.com/m/a", InModule: true,
-				Imports: []string{"example.com/m/b"}, TypeIDs: []int{0}},
+			{
+				ID: 0, Path: "example.com/m/a", InModule: true,
+				Imports: []string{"example.com/m/b"}, TypeIDs: []int{0},
+			},
 			{ID: 1, Path: "example.com/m/b", InModule: true, TypeIDs: []int{1, 2}},
 		},
 		Types: []typefacts.TypeFacts{
@@ -28,6 +31,7 @@ func TestGraphAndCounts(t *testing.T) {
 	if g.Couplings[0].Efferent != 1 {
 		t.Errorf("a efferent = %d, want 1", g.Couplings[0].Efferent)
 	}
+
 	if g.Couplings[1].Afferent != 1 {
 		t.Errorf("b afferent = %d, want 1", g.Couplings[1].Afferent)
 	}

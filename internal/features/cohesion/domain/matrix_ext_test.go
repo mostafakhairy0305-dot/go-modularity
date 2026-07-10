@@ -11,11 +11,13 @@ import (
 // Black-box: field-set derivation and pair counting from the exported API.
 func TestFieldSetsAndPairs(t *testing.T) {
 	t.Parallel()
+
 	fs := func(indices ...int) bitset.FieldSet {
 		s := bitset.NewFieldSet(2)
 		for _, i := range indices {
 			s.Set(i)
 		}
+
 		return s
 	}
 	tf := &typefacts.TypeFacts{
@@ -27,10 +29,12 @@ func TestFieldSetsAndPairs(t *testing.T) {
 	}
 
 	sets := cohesion.EffectiveFieldSets(tf, false)
+
 	pairs := cohesion.CountPairs(sets, len(tf.Fields))
 	if pairs.Sharing != 1 || pairs.NonSharing != 0 {
 		t.Fatalf("pairs = %+v, want one sharing pair", pairs)
 	}
+
 	if got := cohesion.TotalFieldAccesses(sets); got != 2 {
 		t.Errorf("total accesses = %d, want 2", got)
 	}

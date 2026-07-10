@@ -20,10 +20,12 @@ func CAMC(oneCells, methodCount, distinctParamTypes int) MetricResult {
 	if methodCount == 0 {
 		return notApplicable(MetricCAMC, ScopeType, DefinitionCAMC, "type has no methods")
 	}
+
 	if distinctParamTypes == 0 {
 		return notApplicable(MetricCAMC, ScopeType, DefinitionCAMC,
 			"no method has parameters")
 	}
+
 	return applicable(MetricCAMC, ScopeType, DefinitionCAMC,
 		float64(oneCells)/(float64(methodCount)*float64(distinctParamTypes)))
 }

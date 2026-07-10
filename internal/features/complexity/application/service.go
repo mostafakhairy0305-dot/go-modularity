@@ -1,5 +1,3 @@
-// Package application orchestrates the complexity feature: per-method
-// cyclomatic complexity and the type-level AMC built on top of it.
 package application
 
 import (
@@ -22,11 +20,13 @@ type Result struct {
 func ComputeForType(t *typefacts.TypeFacts) Result {
 	complexities := make([]int, len(t.Methods))
 	total := 0
+
 	for i := range t.Methods {
 		c := domain.Cyclomatic(t.Methods[i].Branches)
 		complexities[i] = c
 		total += c
 	}
+
 	return Result{
 		MethodComplexities: complexities,
 		AMC:                metrics.AMC(total, len(t.Methods)),

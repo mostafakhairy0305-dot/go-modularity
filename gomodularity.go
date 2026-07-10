@@ -1,7 +1,3 @@
-// Package gomodularity computes type-level and package-level modularity
-// metrics over a Go module using the standard go/packages + go/types stack.
-//
-//	report, err := gomodularity.Analyze(ctx, gomodularity.Config{Patterns: []string{"./..."}})
 package gomodularity
 
 import (
@@ -58,7 +54,9 @@ func Analyze(ctx context.Context, config Config) (Report, error) {
 		for j, t := range pkg.Types {
 			out.Types[j] = TypeReport{Name: t.Name, Metrics: t.Metrics}
 		}
+
 		report.Packages[i] = out
 	}
+
 	return report, nil
 }

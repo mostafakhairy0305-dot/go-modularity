@@ -18,10 +18,12 @@ func Distance(abstractness, instability MetricResult) MetricResult {
 		return notApplicable(MetricDistance, ScopePackage, DefinitionDistance,
 			"abstractness is not applicable: "+abstractness.Reason)
 	}
+
 	if !instability.Applicable {
 		return notApplicable(MetricDistance, ScopePackage, DefinitionDistance,
 			"instability is not applicable: "+instability.Reason)
 	}
+
 	return applicable(MetricDistance, ScopePackage, DefinitionDistance,
 		math.Abs(abstractness.Value+instability.Value-1))
 }

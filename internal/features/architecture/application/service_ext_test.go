@@ -12,6 +12,7 @@ import (
 // of Pain — instability defaults to 0, abstractness 0, so distance is 1.
 func TestComputeForPackagesIsolated(t *testing.T) {
 	t.Parallel()
+
 	facts := &typefacts.ProjectFacts{
 		ModulePath: "example.com/m",
 		Packages: []typefacts.PackageFacts{
@@ -26,9 +27,11 @@ func TestComputeForPackagesIsolated(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("got %d results", len(got))
 	}
+
 	if !got[0].Distance.Applicable || got[0].Distance.Value != 1 {
 		t.Fatalf("isolated distance = %+v, want 1", got[0].Distance)
 	}
+
 	if !got[0].Instability.Applicable || got[0].Instability.Value != 0 {
 		t.Fatalf("isolated instability = %+v, want 0", got[0].Instability)
 	}

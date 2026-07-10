@@ -24,64 +24,82 @@ var (
 
 func analyzeFixture(t *testing.T, mutate func(*gomodularity.Config)) gomodularity.Report {
 	t.Helper()
+
 	if mutate == nil {
 		defaultOnce.Do(func() {
 			defaultReport, defaultErr = gomodularity.Analyze(
-				context.Background(), gomodularity.Config{Directory: "testdata/fixture"})
+				context.Background(), gomodularity.Config{Directory: "testdata/fixture"},
+			)
 		})
+
 		if defaultErr != nil {
 			t.Fatal(defaultErr)
 		}
+
 		return defaultReport
 	}
+
 	cfg := gomodularity.Config{Directory: "testdata/fixture"}
 	mutate(&cfg)
+
 	report, err := gomodularity.Analyze(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return report
 }
 
 func findPackage(t *testing.T, report gomodularity.Report, path string) gomodularity.PackageReport {
 	t.Helper()
+
 	for _, pkg := range report.Packages {
 		if pkg.Path == path {
 			return pkg
 		}
 	}
+
 	t.Fatalf("package %s not in report", path)
+
 	return gomodularity.PackageReport{}
 }
 
 func findType(t *testing.T, pkg gomodularity.PackageReport, name string) gomodularity.TypeReport {
 	t.Helper()
+
 	for _, typ := range pkg.Types {
 		if typ.Name == name {
 			return typ
 		}
 	}
+
 	t.Fatalf("type %s not in package %s", name, pkg.Path)
+
 	return gomodularity.TypeReport{}
 }
 
 func metric(t *testing.T, results []gomodularity.MetricResult, name string) gomodularity.MetricResult {
 	t.Helper()
+
 	for _, r := range results {
 		if r.Name == name {
 			return r
 		}
 	}
+
 	t.Fatalf("metric %s not present in %v", name, results)
+
 	return gomodularity.MetricResult{}
 }
 
 func wantValue(t *testing.T, results []gomodularity.MetricResult, name string, want float64) {
 	t.Helper()
+
 	r := metric(t, results, name)
 	if !r.Applicable {
 		t.Fatalf("%s not applicable (%s), want %v", name, r.Reason, want)
 	}
+
 	if math.Abs(r.Value-want) > epsilon {
 		t.Fatalf("%s = %v, want %v", name, r.Value, want)
 	}
@@ -89,10 +107,12 @@ func wantValue(t *testing.T, results []gomodularity.MetricResult, name string, w
 
 func wantNotApplicable(t *testing.T, results []gomodularity.MetricResult, name string) {
 	t.Helper()
+
 	r := metric(t, results, name)
 	if r.Applicable {
 		t.Fatalf("%s applicable with value %v, want n/a", name, r.Value)
 	}
+
 	if r.Reason == "" {
 		t.Fatalf("%s n/a without reason", name)
 	}
@@ -100,6 +120,7 @@ func wantNotApplicable(t *testing.T, results []gomodularity.MetricResult, name s
 
 func TestAnalyzeFixtureOrdering(t *testing.T) {
 	report := analyzeFixture(t, nil)
+
 	wantOrder := []string{
 		"example.com/fixture/embedding",
 		"example.com/fixture/gen",
@@ -112,11 +133,13 @@ func TestAnalyzeFixtureOrdering(t *testing.T) {
 	if len(report.Packages) != len(wantOrder) {
 		t.Fatalf("got %d packages", len(report.Packages))
 	}
+
 	for i, path := range wantOrder {
 		if report.Packages[i].Path != path {
 			t.Fatalf("packages[%d] = %s, want %s", i, report.Packages[i].Path, path)
 		}
 	}
+
 	if report.SchemaVersion != gomodularity.SchemaVersion || report.Tool.Name != gomodularity.ToolName {
 		t.Fatalf("report header = %+v", report)
 	}
@@ -162,6 +185,7 @@ func TestAnalyzePackageMetrics(t *testing.T) {
 	wantValue(t, isolated.Metrics, "instability", 0)
 	wantValue(t, isolated.Metrics, "distance", 1)
 	wantValue(t, isolated.Metrics, "abstractness", 0)
+
 	if r := metric(t, isolated.Metrics, "instability"); r.Reason == "" {
 		t.Fatal("isolated instability should carry the defined-as-0 reason")
 	}
@@ -204,6 +228,7 @@ func TestAnalyzeCBOSelected(t *testing.T) {
 	if len(order.Metrics) != 1 {
 		t.Fatalf("metrics = %v, want cbo only", order.Metrics)
 	}
+
 	wantValue(t, order.Metrics, "cbo", 1) // references store.Store
 
 	wrapper := findType(t, findPackage(t, report, "example.com/fixture/embedding"), "Wrapper")
@@ -236,10 +261,12 @@ func TestAnalyzeTransitiveFieldUsage(t *testing.T) {
 
 func TestAnalyzeGeneratedFiles(t *testing.T) {
 	report := analyzeFixture(t, nil)
+
 	gen := findPackage(t, report, "example.com/fixture/gen")
 	if len(gen.Types) != 0 {
 		t.Fatalf("generated types analyzed by default: %v", gen.Types)
 	}
+
 	wantNotApplicable(t, gen.Metrics, "abstractness")
 
 	report = analyzeFixture(t, func(cfg *gomodularity.Config) { cfg.IncludeGenerated = true })
@@ -250,10 +277,12 @@ func TestAnalyzeGeneratedFiles(t *testing.T) {
 
 func TestAnalyzeDeterminism(t *testing.T) {
 	first := analyzeFixture(t, func(cfg *gomodularity.Config) { cfg.Workers = 1 })
+
 	second := analyzeFixture(t, func(cfg *gomodularity.Config) { cfg.Workers = 8 })
 	if !reflect.DeepEqual(first, second) {
 		t.Fatal("reports differ across worker counts")
 	}
+
 	third := analyzeFixture(t, func(cfg *gomodularity.Config) { cfg.Workers = 8 })
 	if !reflect.DeepEqual(second, third) {
 		t.Fatal("repeated runs differ")
@@ -265,18 +294,21 @@ func TestAnalyzeInvalidConfig(t *testing.T) {
 	base := gomodularity.Config{Directory: "testdata/fixture"}
 
 	bad := base
+
 	bad.DependencyScope = "galaxy"
 	if _, err := gomodularity.Analyze(ctx, bad); err == nil {
 		t.Fatal("invalid scope accepted")
 	}
 
 	bad = base
+
 	bad.SelectedMetrics = []gomodularity.MetricName{"nope"}
 	if _, err := gomodularity.Analyze(ctx, bad); err == nil {
 		t.Fatal("unknown metric accepted")
 	}
 
 	bad = base
+
 	bad.ReusabilityWeights = gomodularity.ReusabilityWeights{Cohesion: -1, Coupling: 2}
 	if _, err := gomodularity.Analyze(ctx, bad); err == nil {
 		t.Fatal("negative weight accepted")
@@ -286,6 +318,7 @@ func TestAnalyzeInvalidConfig(t *testing.T) {
 func TestAnalyzeCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
+
 	if _, err := gomodularity.Analyze(ctx, gomodularity.Config{Directory: "testdata/fixture"}); err == nil {
 		t.Fatal("cancelled context accepted")
 	}

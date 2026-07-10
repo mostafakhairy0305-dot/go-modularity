@@ -32,9 +32,11 @@ func TestAssembleOrderingAndIDs(t *testing.T) {
 	if facts.ModulePath != "example.com/m" {
 		t.Fatalf("module = %q", facts.ModulePath)
 	}
+
 	if len(facts.Packages) != 2 || facts.Packages[0].Path != "example.com/m/alpha" {
 		t.Fatalf("packages not sorted by path: %+v", facts.Packages)
 	}
+
 	for i, pkg := range facts.Packages {
 		if pkg.ID != i {
 			t.Fatalf("package ID %d at index %d", pkg.ID, i)
@@ -61,6 +63,7 @@ func TestAssembleOrderingAndIDs(t *testing.T) {
 	if len(zeta.Imports) != 2 || zeta.Imports[0] != "example.com/m/alpha" || zeta.Imports[1] != "fmt" {
 		t.Fatalf("zeta.Imports = %v", zeta.Imports)
 	}
+
 	if len(zeta.TypeIDs) != 2 || facts.Types[zeta.TypeIDs[0]].Name != "A" {
 		t.Fatalf("zeta.TypeIDs = %v", zeta.TypeIDs)
 	}

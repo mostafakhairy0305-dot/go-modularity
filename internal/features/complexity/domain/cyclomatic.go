@@ -1,6 +1,3 @@
-// Package domain holds the complexity feature's formulas: cyclomatic
-// complexity per method, computed from branch facts (never from an AST —
-// the compiler adapter only counts syntax, the formula lives here).
 package domain
 
 import typefacts "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"

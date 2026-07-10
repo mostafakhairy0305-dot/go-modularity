@@ -17,6 +17,7 @@ func Abstractness(namedInterfaceTypes, totalRelevantNamedTypes int) MetricResult
 		return notApplicable(MetricAbstractness, ScopePackage, DefinitionAbstractness,
 			"package declares no relevant named types")
 	}
+
 	return applicable(MetricAbstractness, ScopePackage, DefinitionAbstractness,
 		float64(namedInterfaceTypes)/float64(totalRelevantNamedTypes))
 }

@@ -10,9 +10,11 @@ import (
 
 func assertValue(t *testing.T, r metrics.MetricResult, want float64) {
 	t.Helper()
+
 	if !r.Applicable {
 		t.Fatalf("%s not applicable (%s), want %v", r.Name, r.Reason, want)
 	}
+
 	if r.Value != want {
 		t.Fatalf("%s = %v, want %v", r.Name, r.Value, want)
 	}
@@ -22,11 +24,14 @@ func assertValue(t *testing.T, r metrics.MetricResult, want float64) {
 // land on the main sequence.
 func TestComputeForPackages(t *testing.T) {
 	t.Parallel()
+
 	facts := &typefacts.ProjectFacts{
 		ModulePath: "example.com/m",
 		Packages: []typefacts.PackageFacts{
-			{ID: 0, Path: "example.com/m/a", InModule: true,
-				Imports: []string{"example.com/m/b"}, TypeIDs: []int{0}},
+			{
+				ID: 0, Path: "example.com/m/a", InModule: true,
+				Imports: []string{"example.com/m/b"}, TypeIDs: []int{0},
+			},
 			{ID: 1, Path: "example.com/m/b", InModule: true, TypeIDs: []int{1}},
 		},
 		Types: []typefacts.TypeFacts{

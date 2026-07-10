@@ -18,11 +18,14 @@ var _ FactSource = stubSource{}
 // White-box: the port is satisfiable and FactOptions carries the load config.
 func TestFactSourceContract(t *testing.T) {
 	t.Parallel()
+
 	var src FactSource = stubSource{mod: "example.com/m"}
+
 	mod, pkgs, err := src.Load(context.Background(), FactOptions{Patterns: []string{"./..."}, Workers: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if mod != "example.com/m" || len(pkgs) != 1 {
 		t.Fatalf("mod=%q pkgs=%d", mod, len(pkgs))
 	}

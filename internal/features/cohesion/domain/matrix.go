@@ -1,6 +1,3 @@
-// Package domain holds the cohesion feature's entity logic: the effective
-// method-field sets, unordered method-pair counting over bitsets, and the
-// method × parameter-type matrix.
 package domain
 
 import (
@@ -16,24 +13,30 @@ func EffectiveFieldSets(t *typefacts.TypeFacts, transitive bool) []bitset.FieldS
 	for i := range t.Methods {
 		sets[i] = t.Methods[i].FieldsUsed
 	}
+
 	if !transitive || len(t.Fields) == 0 {
 		return sets
 	}
+
 	for i := range sets {
 		sets[i] = bitset.Clone(sets[i])
 	}
+
 	for changed := true; changed; {
 		changed = false
+
 		for i := range t.Methods {
 			for _, j := range t.Methods[i].CalledSiblings {
 				before := bitset.Count(sets[i])
 				bitset.Union(sets[i], sets[j])
+
 				if bitset.Count(sets[i]) != before {
 					changed = true
 				}
 			}
 		}
 	}
+
 	return sets
 }
 
@@ -52,16 +55,19 @@ type PairCounts struct {
 // whenever the type has at most 64 fields.
 func CountPairs(sets []bitset.FieldSet, fieldCount int) PairCounts {
 	k := len(sets)
+
 	var counts PairCounts
 	if k < 2 {
 		return counts
 	}
+
 	if fieldCount <= 64 {
 		small := make([]bitset.SmallFieldSet, k)
 		for i, s := range sets {
 			small[i] = bitset.Small(s)
 		}
-		for i := 0; i < k; i++ {
+
+		for i := range k {
 			for j := i + 1; j < k; j++ {
 				if small[i].Intersects(small[j]) {
 					counts.Sharing++
@@ -70,9 +76,11 @@ func CountPairs(sets []bitset.FieldSet, fieldCount int) PairCounts {
 				}
 			}
 		}
+
 		return counts
 	}
-	for i := 0; i < k; i++ {
+
+	for i := range k {
 		for j := i + 1; j < k; j++ {
 			if bitset.Intersects(sets[i], sets[j]) {
 				counts.Sharing++
@@ -81,6 +89,7 @@ func CountPairs(sets []bitset.FieldSet, fieldCount int) PairCounts {
 			}
 		}
 	}
+
 	return counts
 }
 
@@ -91,6 +100,7 @@ func TotalFieldAccesses(sets []bitset.FieldSet) int {
 	for _, s := range sets {
 		total += bitset.Count(s)
 	}
+
 	return total
 }
 
@@ -100,11 +110,13 @@ func TotalFieldAccesses(sets []bitset.FieldSet) int {
 // is independent of the TCC computation.
 func ParamMatrix(methods []typefacts.MethodFacts) (oneCells, distinct int) {
 	seen := make(map[string]struct{})
+
 	for i := range methods {
 		oneCells += len(methods[i].ParamTypeKeys)
 		for _, key := range methods[i].ParamTypeKeys {
 			seen[key] = struct{}{}
 		}
 	}
+
 	return oneCells, len(seen)
 }

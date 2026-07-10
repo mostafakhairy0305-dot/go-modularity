@@ -1,10 +1,3 @@
-// Package domain holds the reusability feature's entity logic: deriving the
-// four index components from source facts and upstream metric results, and
-// computing type-level CBO from the referenced-types fact.
-//
-// Upstream results arrive as plain metric results handed over by the
-// orchestrator — this feature never imports the cohesion or complexity
-// features, and package instability is never used as type-level coupling.
 package domain
 
 import (
@@ -30,6 +23,7 @@ func Compute(
 	weights metrics.ReusabilityWeights,
 ) Result {
 	cbo := len(t.ReferencedTypeIDs)
+
 	return Result{
 		CBO: metrics.CBO(cbo),
 		Reusability: metrics.Reusability(

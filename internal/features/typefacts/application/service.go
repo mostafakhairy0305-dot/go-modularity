@@ -1,5 +1,3 @@
-// Package application assembles raw package extracts into the indexed,
-// deterministically ordered fact model consumed by the metric features.
 package application
 
 import (
@@ -26,6 +24,7 @@ func (s *Service) Collect(ctx context.Context, opts outbound.FactOptions) (domai
 	if err != nil {
 		return domain.ProjectFacts{}, err
 	}
+
 	return Assemble(modulePath, extracts), nil
 }
 
@@ -35,6 +34,7 @@ func (s *Service) Collect(ctx context.Context, opts outbound.FactOptions) (domai
 // order is preserved from the extraction contract.
 func Assemble(modulePath string, extracts []domain.PackageExtract) domain.ProjectFacts {
 	sort.Slice(extracts, func(i, j int) bool { return extracts[i].Path < extracts[j].Path })
+
 	for i := range extracts {
 		types := extracts[i].Types
 		sort.Slice(types, func(a, b int) bool { return types[a].Name < types[b].Name })
@@ -53,6 +53,7 @@ func Assemble(modulePath string, extracts []domain.PackageExtract) domain.Projec
 
 	idByKey := make(map[string]int, totalTypes)
 	nextID := 0
+
 	for _, extract := range extracts {
 		for _, t := range extract.Types {
 			idByKey[domain.TypeKey(extract.Path, t.Name)] = nextID
@@ -61,6 +62,7 @@ func Assemble(modulePath string, extracts []domain.PackageExtract) domain.Projec
 	}
 
 	typeID := 0
+
 	for pkgID, extract := range extracts {
 		pkg := domain.PackageFacts{
 			ID:       pkgID,
@@ -74,6 +76,7 @@ func Assemble(modulePath string, extracts []domain.PackageExtract) domain.Projec
 			// running counter matches idByKey without recomputing the key.
 			id := typeID
 			typeID++
+
 			pkg.TypeIDs = append(pkg.TypeIDs, id)
 			facts.Types = append(facts.Types, domain.TypeFacts{
 				ID:                        id,
@@ -89,8 +92,10 @@ func Assemble(modulePath string, extracts []domain.PackageExtract) domain.Projec
 				DocumentedExportedMembers: t.DocumentedExportedMembers,
 			})
 		}
+
 		facts.Packages = append(facts.Packages, pkg)
 	}
+
 	return facts
 }
 
@@ -101,17 +106,21 @@ func resolveKeys(keys []string, idByKey map[string]int) []int {
 	if len(keys) == 0 {
 		return nil
 	}
+
 	ids := make([]int, 0, len(keys))
 	for _, key := range keys {
 		if id, ok := idByKey[key]; ok {
 			ids = append(ids, id)
 		}
 	}
+
 	sort.Ints(ids)
+
 	ids = uniqueInts(ids)
 	if len(ids) == 0 {
 		return nil
 	}
+
 	return ids
 }
 
@@ -122,6 +131,7 @@ func uniqueInts(sorted []int) []int {
 			out = append(out, v)
 		}
 	}
+
 	return out
 }
 
@@ -130,21 +140,26 @@ func sortedUnique(imports []string, self string) []string {
 	if len(imports) == 0 {
 		return nil
 	}
+
 	out := make([]string, 0, len(imports))
 	for _, path := range imports {
 		if path != self {
 			out = append(out, path)
 		}
 	}
+
 	sort.Strings(out)
+
 	dedup := out[:0]
 	for i, path := range out {
 		if i == 0 || path != out[i-1] {
 			dedup = append(dedup, path)
 		}
 	}
+
 	if len(dedup) == 0 {
 		return nil
 	}
+
 	return dedup
 }

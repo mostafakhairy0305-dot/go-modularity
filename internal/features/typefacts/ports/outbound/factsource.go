@@ -1,6 +1,3 @@
-// Package outbound declares typefacts' outbound port toward the Go
-// compiler. The port returns extracted facts, never compiler objects, so
-// nothing upstream of the adapter sees go/packages, go/types, or go/ast.
 package outbound
 
 import (

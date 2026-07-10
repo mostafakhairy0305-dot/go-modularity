@@ -1,6 +1,3 @@
-// Package application renders reports into their concrete encodings and
-// writes them through the outbound sink port. JSON objects are assembled in
-// a fixed key order — rendering never depends on map iteration.
 package application
 
 import (
@@ -23,10 +20,14 @@ func Write(report gomodularity.Report, format domain.Format, sink outbound.Sink,
 	if err != nil {
 		return err
 	}
-	if renderErr := render(w, report, format, opts); renderErr != nil {
+
+	renderErr := render(w, report, format, opts)
+	if renderErr != nil {
 		_ = w.Close()
+
 		return renderErr
 	}
+
 	return w.Close()
 }
 
@@ -34,18 +35,24 @@ func render(w io.Writer, report gomodularity.Report, format domain.Format, opts 
 	switch format {
 	case domain.FormatText:
 		_, err := io.WriteString(w, domain.Text(report, opts))
+
 		return err
 	case domain.FormatJSON:
 		return renderJSON(w, report)
 	case domain.FormatCSV:
 		cw := csv.NewWriter(w)
-		if err := cw.Write(domain.CSVHeader()); err != nil {
+		err := cw.Write(domain.CSVHeader())
+		if err != nil {
 			return err
 		}
-		if err := cw.WriteAll(domain.CSVRecords(report)); err != nil {
+
+		err = cw.WriteAll(domain.CSVRecords(report))
+		if err != nil {
 			return err
 		}
+
 		cw.Flush()
+
 		return cw.Error()
 	default:
 		return fmt.Errorf("unknown report format %q", format)
@@ -125,15 +132,20 @@ func (m orderedMetrics) MarshalJSON() ([]byte, error) {
 func encodeOrderedMetrics(results []metrics.MetricResult) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteByte('{')
+
 	for i, r := range results {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		if err := encodeMetricEntry(&buf, r); err != nil {
+
+		err := encodeMetricEntry(&buf, r)
+		if err != nil {
 			return nil, err
 		}
 	}
+
 	buf.WriteByte('}')
+
 	return buf.Bytes(), nil
 }
 
@@ -144,6 +156,7 @@ func encodeMetricEntry(buf *bytes.Buffer, r metrics.MetricResult) error {
 	if err != nil {
 		return err
 	}
+
 	buf.Write(key)
 	buf.WriteByte(':')
 
@@ -157,11 +170,14 @@ func encodeMetricEntry(buf *bytes.Buffer, r metrics.MetricResult) error {
 		value := r.Value
 		out.Value = &value
 	}
+
 	encoded, err := json.Marshal(out)
 	if err != nil {
 		return err
 	}
+
 	buf.Write(encoded)
+
 	return nil
 }
 
@@ -180,9 +196,12 @@ func renderJSON(w io.Writer, report gomodularity.Report) error {
 		for j, t := range pkg.Types {
 			jp.Types[j] = jsonType{Name: t.Name, Metrics: orderedMetrics(t.Metrics)}
 		}
+
 		out.Packages[i] = jp
 	}
+
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
+
 	return enc.Encode(out)
 }

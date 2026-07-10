@@ -26,6 +26,7 @@ func TestBuildDependencyGraphScopes(t *testing.T) {
 	if got := project.Couplings[0]; got.Efferent != 1 || got.Afferent != 0 {
 		t.Fatalf("project scope a = %+v", got)
 	}
+
 	if got := project.Couplings[1]; got.Afferent != 1 || got.Efferent != 0 {
 		t.Fatalf("project scope b = %+v", got)
 	}
@@ -49,6 +50,7 @@ func TestBuildDependencyGraphScopes(t *testing.T) {
 func TestModuleScopeWithoutModuleInfo(t *testing.T) {
 	facts := scopedFacts()
 	facts.ModulePath = ""
+
 	graph := BuildDependencyGraph(facts, ScopeModule)
 	if got := graph.Couplings[0].Efferent; got != 1 {
 		t.Fatalf("Ce(a) = %d, want 1 (degrades to project scope)", got)
@@ -64,6 +66,7 @@ func TestCountTypes(t *testing.T) {
 			{ID: 2, Kind: typefacts.KindOther},
 		},
 	}
+
 	counts := CountTypes(facts, &facts.Packages[0])
 	if counts.Interfaces != 1 || counts.Total != 3 {
 		t.Fatalf("counts = %+v", counts)

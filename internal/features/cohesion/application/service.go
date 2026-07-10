@@ -1,6 +1,3 @@
-// Package application orchestrates the cohesion feature: it builds the
-// method-field and method-parameter matrices once per type and derives
-// LCOM1, LCOM96b, TCC, and CAMC from them.
 package application
 
 import (

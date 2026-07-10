@@ -1,5 +1,3 @@
-// Package analyzer is the composition root of the analysis engine: it wires
-// the compiler-backed fact source into the pipeline behind the inbound port.
 package analyzer
 
 import (

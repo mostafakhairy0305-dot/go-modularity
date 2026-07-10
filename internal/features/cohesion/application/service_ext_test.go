@@ -12,6 +12,7 @@ import (
 // full TCC and zero LCOM1.
 func TestComputeForTypeCohesive(t *testing.T) {
 	t.Parallel()
+
 	shared := bitset.NewFieldSet(1)
 	shared.Set(0)
 	tf := &typefacts.TypeFacts{
@@ -21,10 +22,12 @@ func TestComputeForTypeCohesive(t *testing.T) {
 			{Name: "Set", FieldsUsed: cloneSet(shared)},
 		},
 	}
+
 	got := cohesion.ComputeForType(tf, false)
 	if !got.TCC.Applicable || got.TCC.Value != 1 {
 		t.Errorf("TCC = %+v, want 1", got.TCC)
 	}
+
 	if !got.LCOM1.Applicable || got.LCOM1.Value != 0 {
 		t.Errorf("LCOM1 = %+v, want 0", got.LCOM1)
 	}

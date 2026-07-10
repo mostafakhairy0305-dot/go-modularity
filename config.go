@@ -1,7 +1,9 @@
 package gomodularity
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 )
@@ -54,10 +56,12 @@ type ReusabilityWeights = metrics.ReusabilityWeights
 // AllMetrics returns every metric name in the fixed rendering order.
 func AllMetrics() []MetricName {
 	ordered := append(metrics.TypeMetricOrder(), metrics.PackageMetricOrder()...)
+
 	out := make([]MetricName, len(ordered))
 	for i, name := range ordered {
 		out[i] = MetricName(name)
 	}
+
 	return out
 }
 
@@ -80,11 +84,14 @@ func MetricClosure(selected []MetricName) []MetricName {
 	for i, m := range selected {
 		names[i] = string(m)
 	}
+
 	closure := metrics.Closure(names)
+
 	out := make([]MetricName, len(closure))
 	for i, name := range closure {
 		out[i] = MetricName(name)
 	}
+
 	return out
 }
 
@@ -130,18 +137,23 @@ func (c Config) withDefaults() Config {
 	if len(c.Patterns) == 0 {
 		c.Patterns = []string{"./..."}
 	}
+
 	if c.DependencyScope == "" {
 		c.DependencyScope = DependencyScopeModule
 	}
+
 	if c.FieldUsageMode == "" {
 		c.FieldUsageMode = FieldUsageDirect
 	}
+
 	if len(c.SelectedMetrics) == 0 {
 		c.SelectedMetrics = DefaultMetrics()
 	}
+
 	if (c.ReusabilityWeights == ReusabilityWeights{}) {
 		c.ReusabilityWeights = metrics.DefaultReusabilityWeights()
 	}
+
 	return c
 }
 
@@ -152,27 +164,32 @@ func (c Config) validate() error {
 	default:
 		return fmt.Errorf("invalid dependency scope %q (want project, module, or all)", c.DependencyScope)
 	}
+
 	switch c.FieldUsageMode {
 	case FieldUsageDirect, FieldUsageTransitive:
 	default:
 		return fmt.Errorf("invalid field usage mode %q (want direct or transitive)", c.FieldUsageMode)
 	}
+
 	known := make(map[MetricName]bool)
 	for _, m := range AllMetrics() {
 		known[m] = true
 	}
+
 	for _, m := range c.SelectedMetrics {
 		if !known[m] {
 			return fmt.Errorf("unknown metric %q", m)
 		}
 	}
-	for _, p := range c.Patterns {
-		if p == "" {
-			return fmt.Errorf("empty package pattern")
-		}
+
+	if slices.Contains(c.Patterns, "") {
+		return errors.New("empty package pattern")
 	}
-	if err := c.ReusabilityWeights.Validate(); err != nil {
+
+	err := c.ReusabilityWeights.Validate()
+	if err != nil {
 		return err
 	}
+
 	return nil
 }

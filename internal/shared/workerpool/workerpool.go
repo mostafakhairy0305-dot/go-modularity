@@ -1,6 +1,3 @@
-// Package workerpool runs a fixed number of indexed tasks on a bounded
-// number of goroutines. Each task writes into its own result slot, so merges
-// after Run are deterministic regardless of scheduling.
 package workerpool
 
 import (
@@ -17,6 +14,7 @@ func Workers(configured, taskCount int) int {
 	if configured > 0 {
 		workers = min(configured, taskCount)
 	}
+
 	return max(workers, 1)
 }
 
@@ -27,16 +25,20 @@ func Run(ctx context.Context, workers, taskCount int, fn func(i int) error) erro
 	if taskCount == 0 {
 		return ctx.Err()
 	}
+
 	workers = min(max(workers, 1), taskCount)
 
 	tasks := make(chan int)
 	errs := make([]error, taskCount)
+
 	var wg sync.WaitGroup
 
 	wg.Add(workers)
-	for w := 0; w < workers; w++ {
+
+	for range workers {
 		go func() {
 			defer wg.Done()
+
 			for i := range tasks {
 				errs[i] = fn(i)
 			}
@@ -51,16 +53,20 @@ func Run(ctx context.Context, workers, taskCount int, fn func(i int) error) erro
 			stopped = true
 		}
 	}
+
 	close(tasks)
 	wg.Wait()
 
-	if err := ctx.Err(); err != nil {
+	err := ctx.Err()
+	if err != nil {
 		return err
 	}
+
 	for _, err := range errs {
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

@@ -1,7 +1,3 @@
-// Package domain defines the source facts extracted from a Go module. The
-// facts are plain data plus debug Stringers — this package imports no
-// compiler package — and form the input vocabulary for every metric
-// feature.
 package domain
 
 import (

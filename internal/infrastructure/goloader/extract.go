@@ -45,16 +45,20 @@ func extractPackage(pkg *packages.Package, opts extractorOptions) domain.Package
 		if !ok || tn.IsAlias() {
 			continue
 		}
+
 		named, ok := tn.Type().(*types.Named)
 		if !ok {
 			continue
 		}
+
 		if skipPos(pkg.Fset, opts.includeGenerated, generated, tn.Pos()) {
 			continue
 		}
+
 		out.Types = append(out.Types,
 			extractType(pkg, opts, generated, funcDecls, typeDocs, fieldDocs, tn, named))
 	}
+
 	return out
 }
 
@@ -64,6 +68,7 @@ func indexSyntax(pkg *packages.Package) (generated map[string]bool, funcDecls ma
 	generated = make(map[string]bool)
 	funcDecls = make(map[*types.Func]*ast.FuncDecl)
 	typeDocs = make(map[types.Object]bool)
+
 	for _, file := range pkg.Syntax {
 		filename := pkg.Fset.Position(file.Package).Filename
 		generated[filename] = ast.IsGenerated(file)
@@ -74,6 +79,7 @@ func indexSyntax(pkg *packages.Package) (generated map[string]bool, funcDecls ma
 				if decl.Recv == nil {
 					continue // free function, never a method
 				}
+
 				if fn, ok := pkg.TypesInfo.Defs[decl.Name].(*types.Func); ok {
 					funcDecls[fn] = decl
 				}
@@ -82,7 +88,9 @@ func indexSyntax(pkg *packages.Package) (generated map[string]bool, funcDecls ma
 			}
 		}
 	}
+
 	sort.Slice(fieldDocs, func(i, j int) bool { return fieldDocs[i].start < fieldDocs[j].start })
+
 	return generated, funcDecls, typeDocs, fieldDocs
 }
 
@@ -92,15 +100,18 @@ func indexTypeDecl(info *types.Info, typeDocs map[types.Object]bool, fieldDocs [
 	if decl.Tok != token.TYPE {
 		return fieldDocs
 	}
+
 	for _, spec := range decl.Specs {
 		spec, ok := spec.(*ast.TypeSpec)
 		if !ok {
 			continue
 		}
+
 		documented := spec.Doc != nil || (len(decl.Specs) == 1 && decl.Doc != nil)
 		if obj := info.Defs[spec.Name]; obj != nil {
 			typeDocs[obj] = documented
 		}
+
 		if st, ok := spec.Type.(*ast.StructType); ok && st.Fields != nil {
 			for _, field := range st.Fields.List {
 				fieldDocs = append(fieldDocs, docRange{
@@ -111,6 +122,7 @@ func indexTypeDecl(info *types.Info, typeDocs map[types.Object]bool, fieldDocs [
 			}
 		}
 	}
+
 	return fieldDocs
 }
 
@@ -137,12 +149,14 @@ func extractType(
 	out.Fields = fields
 
 	methods := sortedMethods(pkg.Fset, opts, generated, funcDecls, named)
+
 	methodIndex := make(map[*types.Func]int, len(methods))
 	for i, m := range methods {
 		methodIndex[m.fn] = i
 	}
 
 	out.Methods = make([]domain.MethodFacts, 0, len(methods))
+
 	docMethods := make([]methodDocInput, 0, len(methods))
 	for _, m := range methods {
 		facts, doc := methodFacts(pkg, opts, m, refs, len(out.Fields), fieldIndex, methodIndex)
@@ -151,8 +165,8 @@ func extractType(
 	}
 
 	out.ReferencedTypeKeys = sortedRefKeys(refs.seen)
-	out.ExportedMembers, out.DocumentedExportedMembers =
-		memberDocs(typeDocs, fieldDocs, tn, out.Fields, fieldPositions, docMethods)
+	out.ExportedMembers, out.DocumentedExportedMembers = memberDocs(typeDocs, fieldDocs, tn, out.Fields, fieldPositions, docMethods)
+
 	return out
 }
 
@@ -165,8 +179,10 @@ func structFields(named *types.Named, refs *refCollector) ([]domain.FieldFacts, 
 	if !ok {
 		return nil, nil, nil
 	}
+
 	fields := make([]domain.FieldFacts, 0, st.NumFields())
 	fieldIndex := make(map[*types.Var]int, st.NumFields())
+
 	fieldPositions := make([]token.Pos, 0, st.NumFields())
 	for i := 0; i < st.NumFields(); i++ {
 		field := st.Field(i)
@@ -179,6 +195,7 @@ func structFields(named *types.Named, refs *refCollector) ([]domain.FieldFacts, 
 		})
 		refs.addType(field.Type())
 	}
+
 	return fields, fieldIndex, fieldPositions
 }
 
@@ -194,20 +211,25 @@ type methodDecl struct {
 // in named.Method.
 func sortedMethods(fset *token.FileSet, opts extractorOptions, generated map[string]bool, funcDecls map[*types.Func]*ast.FuncDecl, named *types.Named) []methodDecl {
 	methods := make([]methodDecl, 0, named.NumMethods())
-	for i := 0; i < named.NumMethods(); i++ {
-		fn := named.Method(i)
+	for fn := range named.Methods() {
+		fn := fn
+
 		decl, ok := funcDecls[fn]
 		if !ok || skipPos(fset, opts.includeGenerated, generated, decl.Pos()) {
 			continue
 		}
+
 		methods = append(methods, methodDecl{fn: fn, decl: decl})
 	}
+
 	sort.Slice(methods, func(i, j int) bool {
 		if methods[i].fn.Name() != methods[j].fn.Name() {
 			return methods[i].fn.Name() < methods[j].fn.Name()
 		}
+
 		return methods[i].decl.Pos() < methods[j].decl.Pos()
 	})
+
 	return methods
 }
 
@@ -230,7 +252,9 @@ func methodFacts(
 		facts.ParamTypeKeys = paramTypeKeys(sig)
 		refs.addType(sig)
 	}
+
 	walkBody(pkg.TypesInfo, m.decl, fieldCount, fieldIndex, methodIndex, &facts)
+
 	return facts, methodDocInput{exported: m.fn.Exported(), documented: m.decl.Doc != nil}
 }
 
@@ -247,17 +271,21 @@ func walkBody(
 	if fieldCount > 0 {
 		facts.FieldsUsed = bitset.NewFieldSet(fieldCount)
 	}
+
 	if decl.Body == nil {
 		return
 	}
+
 	siblings := make(map[int]bool)
 	self, hasSelf := methodIndex[info.Defs[decl.Name].(*types.Func)]
 
 	ast.Inspect(decl.Body, func(n ast.Node) bool {
 		countBranch(n, &facts.Branches)
+
 		if sel, ok := n.(*ast.SelectorExpr); ok {
 			recordSelection(info, sel, fieldIndex, methodIndex, facts, siblings, self, hasSelf)
 		}
+
 		return true
 	})
 
@@ -266,6 +294,7 @@ func walkBody(
 		for idx := range siblings {
 			facts.CalledSiblings = append(facts.CalledSiblings, idx)
 		}
+
 		sort.Ints(facts.CalledSiblings)
 	}
 }
@@ -311,6 +340,7 @@ func recordSelection(
 	if !ok {
 		return
 	}
+
 	switch sel.Kind() {
 	case types.FieldVal:
 		// Resolved through the type checker: only this type's own field
@@ -343,28 +373,36 @@ func memberDocs(
 ) (exported, documented int) {
 	if tn.Exported() {
 		exported++
+
 		if typeDocs[tn] {
 			documented++
 		}
 	}
+
 	for i, f := range fields {
 		if !f.Exported {
 			continue
 		}
+
 		exported++
+
 		if fieldDocumented(fieldDocs, fieldPositions[i]) {
 			documented++
 		}
 	}
+
 	for _, m := range methods {
 		if !m.exported {
 			continue
 		}
+
 		exported++
+
 		if m.documented {
 			documented++
 		}
 	}
+
 	return exported, documented
 }
 
@@ -380,7 +418,9 @@ func fieldDocumented(fieldDocs []docRange, pos token.Pos) bool {
 	if i == 0 {
 		return false
 	}
+
 	r := fieldDocs[i-1]
+
 	return pos >= r.start && pos <= r.end && r.documented
 }
 
@@ -390,6 +430,7 @@ func skipPos(fset *token.FileSet, includeGenerated bool, generated map[string]bo
 	if includeGenerated {
 		return false
 	}
+
 	return generated[fset.Position(pos).Filename]
 }
 
@@ -397,12 +438,14 @@ func skipPos(fset *token.FileSet, includeGenerated bool, generated map[string]bo
 // machine-independent.
 func position(fset *token.FileSet, baseDir string, pos token.Pos) domain.Position {
 	p := fset.Position(pos)
+
 	file := p.Filename
 	if baseDir != "" {
 		if rel, err := filepath.Rel(baseDir, file); err == nil && !strings.HasPrefix(rel, "..") {
 			file = filepath.ToSlash(rel)
 		}
 	}
+
 	return domain.Position{File: file, Line: p.Line, Column: p.Column}
 }
 
@@ -416,11 +459,14 @@ func importPaths(pkg *packages.Package) []string {
 	if len(pkg.Imports) == 0 {
 		return nil
 	}
+
 	paths := make([]string, 0, len(pkg.Imports))
 	for path := range pkg.Imports {
 		paths = append(paths, path)
 	}
+
 	sort.Strings(paths)
+
 	return paths
 }
 
@@ -444,15 +490,19 @@ func paramTypeKeys(sig *types.Signature) []string {
 	if params.Len() == 0 {
 		return nil
 	}
+
 	seen := make(map[string]bool, params.Len())
-	for i := 0; i < params.Len(); i++ {
-		seen[types.TypeString(params.At(i).Type(), fullPathQualifier)] = true
+	for v := range params.Variables() {
+		seen[types.TypeString(v.Type(), fullPathQualifier)] = true
 	}
+
 	keys := make([]string, 0, len(seen))
 	for key := range seen {
 		keys = append(keys, key)
 	}
+
 	sort.Strings(keys)
+
 	return keys
 }
 
@@ -487,6 +537,7 @@ func (r *refCollector) addType(t types.Type) {
 	if r.visited[t] {
 		return
 	}
+
 	r.visited[t] = true
 
 	switch t := t.(type) {
@@ -519,36 +570,38 @@ func recordNamedRef(seen map[string]bool, self *types.TypeName, analyzed map[str
 // addTypeArgRefs descends into a named type's generic type arguments.
 func addTypeArgRefs(r *refCollector, t *types.Named) {
 	args := t.TypeArgs()
-	for i := 0; i < args.Len(); i++ {
-		r.addType(args.At(i))
+	for t := range args.Types() {
+		r.addType(t)
 	}
 }
 
 // addSignatureRefs descends into a function type's parameters and results.
 func addSignatureRefs(r *refCollector, sig *types.Signature) {
-	for i := 0; i < sig.Params().Len(); i++ {
-		r.addType(sig.Params().At(i).Type())
+	for v := range sig.Params().Variables() {
+		r.addType(v.Type())
 	}
-	for i := 0; i < sig.Results().Len(); i++ {
-		r.addType(sig.Results().At(i).Type())
+
+	for v := range sig.Results().Variables() {
+		r.addType(v.Type())
 	}
 }
 
 // addStructRefs descends into an anonymous struct's field types.
 func addStructRefs(r *refCollector, st *types.Struct) {
-	for i := 0; i < st.NumFields(); i++ {
-		r.addType(st.Field(i).Type())
+	for field := range st.Fields() {
+		r.addType(field.Type())
 	}
 }
 
 // addInterfaceRefs descends into an anonymous interface's embeds and
 // explicit method signatures.
 func addInterfaceRefs(r *refCollector, iface *types.Interface) {
-	for i := 0; i < iface.NumEmbeddeds(); i++ {
-		r.addType(iface.EmbeddedType(i))
+	for etyp := range iface.EmbeddedTypes() {
+		r.addType(etyp)
 	}
-	for i := 0; i < iface.NumExplicitMethods(); i++ {
-		if sig, ok := iface.ExplicitMethod(i).Type().(*types.Signature); ok {
+
+	for method := range iface.ExplicitMethods() {
+		if sig, ok := method.Type().(*types.Signature); ok {
 			addSignatureRefs(r, sig)
 		}
 	}
@@ -559,10 +612,13 @@ func sortedRefKeys(seen map[string]bool) []string {
 	if len(seen) == 0 {
 		return nil
 	}
+
 	keys := make([]string, 0, len(seen))
 	for key := range seen {
 		keys = append(keys, key)
 	}
+
 	sort.Strings(keys)
+
 	return keys
 }

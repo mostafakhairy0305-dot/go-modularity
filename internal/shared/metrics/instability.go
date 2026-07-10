@@ -19,8 +19,10 @@ func Instability(afferent, efferent int) MetricResult {
 	if afferent+efferent == 0 {
 		result := applicable(MetricInstability, ScopePackage, DefinitionInstability, 0)
 		result.Reason = "package has no dependencies in scope (isolated); defined as 0"
+
 		return result
 	}
+
 	return applicable(MetricInstability, ScopePackage, DefinitionInstability,
 		float64(efferent)/float64(afferent+efferent))
 }

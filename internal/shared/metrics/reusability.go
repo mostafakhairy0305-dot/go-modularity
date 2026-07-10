@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -55,9 +56,11 @@ func (w ReusabilityWeights) Validate() error {
 			return fmt.Errorf("reusability weight %q is negative: %v", c.name, c.value)
 		}
 	}
+
 	if w.Cohesion+w.Coupling+w.Testability+w.Documentation == 0 {
-		return fmt.Errorf("reusability weights sum to zero and cannot be normalized")
+		return errors.New("reusability weights sum to zero and cannot be normalized")
 	}
+
 	return nil
 }
 
@@ -80,6 +83,7 @@ func CohesionComponent(lcom96b MetricResult) ReusabilityComponent {
 	if !lcom96b.Applicable {
 		return ReusabilityComponent{Name: ComponentCohesion, Reason: lcom96b.Reason}
 	}
+
 	return ReusabilityComponent{Name: ComponentCohesion, Value: 1 - lcom96b.Value, Applicable: true}
 }
 
@@ -92,6 +96,7 @@ func CohesionComponent(lcom96b MetricResult) ReusabilityComponent {
 // Always applicable.
 func CouplingComponent(cbo int) ReusabilityComponent {
 	coupling := float64(cbo) / (float64(cbo) + 1)
+
 	return ReusabilityComponent{Name: ComponentCoupling, Value: 1 - coupling, Applicable: true}
 }
 
@@ -105,6 +110,7 @@ func TestabilityComponent(amc MetricResult) ReusabilityComponent {
 	if !amc.Applicable {
 		return ReusabilityComponent{Name: ComponentTestability, Reason: amc.Reason}
 	}
+
 	return ReusabilityComponent{
 		Name:       ComponentTestability,
 		Value:      1 / (1 + max(0, amc.Value-1)),
@@ -121,6 +127,7 @@ func DocumentationComponent(documentedExportedMembers, exportedMembers int) Reus
 	if exportedMembers == 0 {
 		return ReusabilityComponent{Name: ComponentDocumentation, Reason: "type has no exported members"}
 	}
+
 	return ReusabilityComponent{
 		Name:       ComponentDocumentation,
 		Value:      float64(documentedExportedMembers) / float64(exportedMembers),
@@ -152,8 +159,11 @@ func Reusability(
 		{documentation, weights.Documentation},
 	}
 
-	var weightSum float64
-	var dropped []ReusabilityComponent
+	var (
+		weightSum float64
+		dropped   []ReusabilityComponent
+	)
+
 	for _, in := range inputs {
 		if in.component.Applicable {
 			weightSum += in.weight
@@ -161,11 +171,14 @@ func Reusability(
 			dropped = append(dropped, in.component)
 		}
 	}
+
 	sort.Slice(dropped, func(i, j int) bool { return dropped[i].Name < dropped[j].Name })
 	names := make([]string, len(dropped))
+
 	details := make([]string, len(dropped))
 	for i, c := range dropped {
 		names[i] = c.Name
+
 		details[i] = c.Name
 		if c.Reason != "" {
 			details[i] = c.Name + " (" + c.Reason + ")"
@@ -177,11 +190,13 @@ func Reusability(
 			return notApplicable(MetricReusability, ScopeType, DefinitionReusability,
 				"every component dropped: "+strings.Join(details, ", "))
 		}
+
 		return notApplicable(MetricReusability, ScopeType, DefinitionReusability,
 			"the applicable components have zero total weight; dropped: "+strings.Join(details, ", "))
 	}
 
 	var value float64
+
 	for _, in := range inputs {
 		if in.component.Applicable {
 			value += in.weight / weightSum * in.component.Value
@@ -192,5 +207,6 @@ func Reusability(
 	if len(dropped) > 0 {
 		result.Reason = "dropped components: " + strings.Join(names, ", ")
 	}
+
 	return result
 }

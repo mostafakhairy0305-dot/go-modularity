@@ -12,6 +12,7 @@ import (
 // an undocumented, coupled one under the same weights.
 func TestComputeIndexRewardsQuality(t *testing.T) {
 	t.Parallel()
+
 	weights := metrics.DefaultReusabilityWeights()
 	amc := metrics.AMC(2, 2)
 	lcom96b := metrics.LCOM96b(4, 2, 2)
@@ -27,10 +28,12 @@ func TestComputeIndexRewardsQuality(t *testing.T) {
 	if !good.Reusability.Applicable || !poor.Reusability.Applicable {
 		t.Fatal("both indices should be applicable")
 	}
+
 	if good.Reusability.Value <= poor.Reusability.Value {
 		t.Errorf("documented/uncoupled %.3f should exceed undocumented/coupled %.3f",
 			good.Reusability.Value, poor.Reusability.Value)
 	}
+
 	if poor.CBO.Value != 5 {
 		t.Errorf("coupled type CBO = %v, want 5", poor.CBO.Value)
 	}

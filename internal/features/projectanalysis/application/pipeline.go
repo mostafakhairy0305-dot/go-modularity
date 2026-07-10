@@ -1,7 +1,3 @@
-// Package application drives the analysis pipeline: load packages once,
-// collect facts, run each metric feature over the facts with bounded
-// package-level concurrency, and assemble deterministic results. No metric
-// formula is implemented here.
 package application
 
 import (
@@ -49,6 +45,7 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 	if err != nil {
 		return inbound.Result{}, err
 	}
+
 	if err := ctx.Err(); err != nil {
 		return inbound.Result{}, err
 	}
@@ -57,8 +54,10 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 
 	packageResults := make([]inbound.PackageResult, len(facts.Packages))
 	workers := workerpool.Workers(opts.Workers, len(facts.Packages))
+
 	err = workerpool.Run(ctx, workers, len(facts.Packages), func(i int) error {
 		packageResults[i] = analyzePackage(&facts, i, archResults, reusabilitySvc, display, compute, opts)
+
 		return nil
 	})
 	if err != nil {
@@ -74,6 +73,7 @@ func newReusabilityService(compute map[string]bool, weights metrics.ReusabilityW
 	if !compute[metrics.MetricReusability] && !compute[metrics.MetricCBO] {
 		return nil, nil
 	}
+
 	return reusability.NewService(weights)
 }
 
@@ -97,6 +97,7 @@ func computeArchitecture(facts *tfdomain.ProjectFacts, compute map[string]bool, 
 		!compute[metrics.MetricDistance] {
 		return nil
 	}
+
 	return architecture.ComputeForPackages(facts, archdomain.Scope(opts.DependencyScope))
 }
 
@@ -112,6 +113,7 @@ func analyzePackage(
 	opts inbound.Options,
 ) inbound.PackageResult {
 	pkg := &facts.Packages[pkgID]
+
 	result := inbound.PackageResult{Path: pkg.Path}
 	if archResults != nil {
 		result.Metrics = packageMetrics(archResults[pkgID], display)
@@ -127,6 +129,7 @@ func analyzePackage(
 			&facts.Types[typeID], reusabilitySvc, display, needComplexity, needCohesion, opts,
 		))
 	}
+
 	return result
 }
 
@@ -134,10 +137,12 @@ func analyzePackage(
 // metric order.
 func packageMetrics(arch architecture.Result, display map[string]bool) []metrics.MetricResult {
 	var out []metrics.MetricResult
+
 	for _, name := range metrics.PackageMetricOrder() {
 		if !display[name] {
 			continue
 		}
+
 		switch name {
 		case metrics.MetricAbstractness:
 			out = append(out, arch.Abstractness)
@@ -147,6 +152,7 @@ func packageMetrics(arch architecture.Result, display map[string]bool) []metrics
 			out = append(out, arch.Distance)
 		}
 	}
+
 	return out
 }
 
@@ -163,10 +169,12 @@ func analyzeType(
 	if needComplexity {
 		complexityResult = complexity.ComputeForType(t)
 	}
+
 	var cohesionResult cohesion.Result
 	if needCohesion {
 		cohesionResult = cohesion.ComputeForType(t, opts.FieldUsageTransitive)
 	}
+
 	var reusabilityResult reusability.Result
 	if reusabilitySvc != nil {
 		reusabilityResult = reusabilitySvc.ComputeForType(
@@ -175,10 +183,12 @@ func analyzeType(
 	}
 
 	typeResult := inbound.TypeResult{Name: t.Name}
+
 	for _, name := range metrics.TypeMetricOrder() {
 		if !display[name] {
 			continue
 		}
+
 		switch name {
 		case metrics.MetricAMC:
 			typeResult.Metrics = append(typeResult.Metrics, complexityResult.AMC)
@@ -196,6 +206,7 @@ func analyzeType(
 			typeResult.Metrics = append(typeResult.Metrics, reusabilityResult.Reusability)
 		}
 	}
+
 	return typeResult
 }
 
@@ -204,5 +215,6 @@ func nameSet(names []string) map[string]bool {
 	for _, name := range names {
 		set[name] = true
 	}
+
 	return set
 }

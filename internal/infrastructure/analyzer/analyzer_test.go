@@ -9,7 +9,13 @@ import (
 // White-box: the composition root wires up an analyzer satisfying the port.
 func TestNewAnalyzerImplementsPort(t *testing.T) {
 	t.Parallel()
-	var a inbound.Analyzer = NewAnalyzer()
+
+	requireAnalyzer(t, NewAnalyzer())
+}
+
+func requireAnalyzer(t *testing.T, a inbound.Analyzer) {
+	t.Helper()
+
 	if a == nil {
 		t.Fatal("NewAnalyzer returned nil")
 	}

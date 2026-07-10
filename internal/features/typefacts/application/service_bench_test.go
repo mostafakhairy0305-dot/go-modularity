@@ -20,6 +20,7 @@ func benchExtracts(pkgCount, typesPerPkg int) []domain.PackageExtract {
 				},
 			}
 		}
+
 		pkgs[p] = domain.PackageExtract{
 			Path:     fmt.Sprintf("example.com/m/pkg%d", p),
 			InModule: true,
@@ -27,14 +28,17 @@ func benchExtracts(pkgCount, typesPerPkg int) []domain.PackageExtract {
 			Types:    types,
 		}
 	}
+
 	return pkgs
 }
 
 func BenchmarkAssemble(b *testing.B) {
 	extracts := benchExtracts(60, 25)
+
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for range b.N {
 		// Assemble mutates (sorts) its input in place; copy per iteration so
 		// each run sees identical work.
 		cp := make([]domain.PackageExtract, len(extracts))
