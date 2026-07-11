@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>go-modularity report</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23000'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+<script>
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('gm-theme'); } catch (e) { /* private mode */ }
+  if (t !== 'light' && t !== 'dark') {
+    t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+<style>
+  /* Monochrome chrome; green/orange/red are reserved for metric quality. */
+  :root[data-theme="light"] {
+    --bg: #ffffff; --fg: #000000; --mut: #6b6b6b; --faint: #9a9a9a;
+    --line: #e6e6e6; --track: #ededed; --hover: #f6f6f6; --raise: #fafafa;
+    --shadow: 0 1px 2px rgba(0,0,0,.05);
+    --good: #15803d; --warn: #b45309; --bad: #dc2626;
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --fg: #ffffff; --mut: #9a9a9a; --faint: #6b6b6b;
+    --line: #242424; --track: #1d1d1d; --hover: #101010; --raise: #0a0a0a;
+    --shadow: 0 1px 2px rgba(0,0,0,.6);
+    --good: #3fb950; --warn: #f59e0b; --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px 64px; }
+
+  /* ---- header ---- */
+  header.top { padding: 26px 0 6px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .brand h1 { margin: 0; font-size: 21px; letter-spacing: -.01em; }
+  .brand .ver { color: var(--mut); font-size: 13px; }
+  .module { color: var(--mut); font-size: 13px; margin-top: 2px; word-break: break-all; }
+  .module b { color: var(--fg); font-weight: 600; }
+
+  /* ---- summary tiles ---- */
+  .tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px; margin: 18px 0 6px;
+  }
+  .tile {
+    border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px 11px;
+    background: var(--raise); box-shadow: var(--shadow);
+  }
+  .tile .n { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .tile .l { color: var(--mut); font-size: 12px; margin-top: 2px; }
+
+  /* ---- toolbar ---- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 0 12px;
+  }
+  .pills { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .pill {
+    appearance: none; border: 0; background: none; color: var(--fg);
+    padding: 6px 13px; font: inherit; font-size: 13px; cursor: pointer;
+    border-right: 1px solid var(--line); transition: background .15s ease;
+  }
+  .pill:last-child { border-right: 0; }
+  .pill:hover { background: var(--hover); }
+  .pill.active { background: var(--fg); color: var(--bg); }
+  input[type="search"], select {
+    appearance: none; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 9px; padding: 6px 11px;
+    font: inherit; font-size: 13px;
+  }
+  input[type="search"] { width: 240px; }
+  input[type="search"]::placeholder { color: var(--faint); }
+  select { max-width: 260px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mut); cursor: pointer; user-select: none; }
+  .check input { accent-color: var(--fg); }
+  .count { margin-left: auto; color: var(--mut); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* The column picker lives at the document root so no ancestor stacking
+     context (sticky headers, animated sections) can paint over it. */
+  .sheet {
+    position: fixed; z-index: 1000; min-width: 170px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; box-shadow: 0 8px 26px rgba(0,0,0,.18); display: grid; gap: 5px;
+  }
+  .sheet[hidden] { display: none; }
+  /* Metric info sheet: opened from the ? affordance on column headers. */
+  .sheet.info { max-width: 380px; max-height: 70vh; overflow: auto; padding: 13px 16px; gap: 8px; font-size: 13px; }
+  .sheet.info h3 { margin: 0; font-size: 14px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .sheet.info h3 .full { color: var(--mut); font-size: 12px; font-weight: 400; }
+  .sheet.info .formula { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; overflow-x: auto; background: var(--raise); }
+  .sheet.info .formula math { font-size: 1.15em; }
+  .sheet.info .formula math[display="block"] { margin: 4px 0; }
+  .sheet.info p { margin: 0; }
+  .sheet.info .muted { color: var(--mut); }
+  .sheet.info .hint { color: var(--faint); font-size: 11.5px; border-top: 1px dashed var(--line); padding-top: 7px; }
+  .sheet.info .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+    border-radius: 9px; padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer;
+    transition: background .15s ease;
+  }
+  .btn:hover { background: var(--hover); }
+  .btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .theme { font-size: 15px; line-height: 1; padding: 6px 10px; }
+  .lvl { display: inline-flex; align-items: center; gap: 7px; }
+  .lvl-label { color: var(--mut); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; }
+  .lvl .pill { padding: 5px 11px; font-size: 12.5px; min-width: 32px; }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0; z-index: 10; background: var(--bg);
+    text-align: right; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--mut); border-bottom: 1px solid var(--line); padding: 0; white-space: nowrap;
+  }
+  thead th.txt { text-align: left; }
+  thead th .hbtn {
+    appearance: none; border: 0; background: none; color: inherit; font: inherit;
+    text-transform: inherit; letter-spacing: inherit; cursor: pointer; width: 100%;
+    padding: 10px 12px; display: inline-flex; justify-content: flex-end; gap: 5px; align-items: center;
+  }
+  thead th.txt .hbtn { justify-content: flex-start; }
+  thead th .hbtn:hover { color: var(--fg); }
+  thead th .hlabel {
+    display: inline-flex; width: 100%; justify-content: flex-end;
+    padding: 10px 12px;
+  }
+  thead th.txt .hlabel { justify-content: flex-start; }
+  thead th .arr { font-size: 9px; width: 9px; display: inline-block; }
+  /* The ? affordance sits beside the header control (a sibling — a button
+     may not nest inside a button) and opens the metric's info sheet. */
+  thead th .hwrap { display: flex; align-items: stretch; }
+  thead th .hwrap .hbtn, thead th .hwrap .hlabel { flex: 1; width: auto; min-width: 0; padding-right: 3px; }
+  .qmark {
+    appearance: none; border: 0; background: none; color: var(--faint); cursor: pointer;
+    font: inherit; font-size: 10px; line-height: 1; padding: 0 10px 0 0;
+    display: inline-flex; align-items: center; flex: none;
+  }
+  .qmark .qi {
+    display: inline-flex; width: 14px; height: 14px; border: 1px solid currentColor;
+    border-radius: 50%; align-items: center; justify-content: center;
+  }
+  .qmark:hover, .qmark[aria-expanded="true"] { color: var(--fg); }
+  /* Instant header tooltip: the full name of the abbreviated column. */
+  thead th[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; top: calc(100% - 4px); right: 6px; z-index: 40;
+    background: var(--fg); color: var(--bg);
+    font-size: 11.5px; font-weight: 400; text-transform: none; letter-spacing: 0;
+    padding: 4px 9px; border-radius: 6px; white-space: nowrap;
+    pointer-events: none;
+    animation: rise .18s ease-out backwards;
+  }
+  thead th.txt[data-tip]:hover::after { right: auto; left: 6px; }
+  thead th[aria-sort] .hbtn { color: var(--fg); font-weight: 700; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr:hover td { background: var(--hover); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.txt { text-align: left; }
+  .dim { color: var(--mut); }
+  .na { color: var(--faint); cursor: help; }
+  .cell { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 52px; }
+  .bar { display: block; width: 52px; height: 3px; background: var(--track); border-radius: 2px; overflow: hidden; }
+  .fill { display: block; height: 100%; background: var(--fg); border-radius: 2px; transition: width .6s cubic-bezier(.2,.7,.2,1); }
+  .mean .val { opacity: .78; }
+  .mean .fill { opacity: .55; }
+  .noted .val { text-decoration: underline dotted var(--mut); text-underline-offset: 3px; cursor: help; }
+  .typename { font-weight: 600; }
+  .pkgpath { color: var(--mut); }
+
+  /* quality colors: the only hue on the page */
+  .q-good { color: var(--good); }
+  .q-warn { color: var(--warn); }
+  .q-bad { color: var(--bad); }
+  .fill.q-good { background: var(--good); }
+  .fill.q-warn { background: var(--warn); }
+  .fill.q-bad { background: var(--bad); }
+
+  /* ---- tree ---- */
+  tr.dir-row td { font-weight: 700; }
+  tr.pkg-row td { background: var(--raise); font-weight: 600; }
+  tr.pkg-row:hover td, tr.dir-row:hover td { background: var(--hover); }
+  tr.section-top td { border-top: 2px solid var(--line); }
+  .disc {
+    appearance: none; border: 0; background: none; color: var(--fg); font: inherit; font-weight: inherit;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 0; text-align: left;
+  }
+  .disc .caret { display: inline-block; transition: transform .25s ease; font-size: 10px; color: var(--mut); width: 10px; }
+  .disc[aria-expanded="false"] .caret { transform: rotate(-90deg); }
+  .leafpad { display: inline-block; width: 18px; }
+  tr.type-row td.txt { position: relative; }
+  .guide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+  .tcount { color: var(--faint); font-weight: 400; font-size: 12px; margin-left: 8px; }
+
+  /* row entrance + tiles */
+  /* Entrance animations fill backwards only: a "both"/"forwards" fill would
+     keep each section a stacking context forever and trap overlays. */
+  @keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+  .enter { animation: rise .45s cubic-bezier(.2,.7,.2,1) backwards; }
+  header.top, .tiles, .toolbar, .tablewrap, footer { animation: rise .5s cubic-bezier(.2,.7,.2,1) backwards; }
+  .tiles { animation-delay: .05s; } .toolbar { animation-delay: .1s; }
+  .tablewrap { animation-delay: .15s; } footer { animation-delay: .2s; }
+
+  .empty { padding: 42px 20px; text-align: center; color: var(--mut); }
+  footer { margin-top: 18px; color: var(--faint); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .legend { display: inline-flex; gap: 10px; align-items: center; }
+  .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }
+  .swatch.good { background: var(--good); }
+  .swatch.warn { background: var(--warn); }
+  .swatch.bad { background: var(--bad); }
+
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; border-radius: 4px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  @media (max-width: 700px) {
+    input[type="search"] { width: 100%; }
+    .count { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<script type="application/json" id="report-data">__REPORT_DATA__</script>
+<script type="application/json" id="docs-data">__DOCS_DATA__</script>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 id="tool-name">go-modularity</h1>
+      <span class="ver" id="tool-ver"></span>
+    </div>
+    <div class="module" id="module-line"></div>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="summary"></section>
+
+  <nav class="toolbar" aria-label="controls">
+    <div class="pills" role="tablist" id="views">
+      <button class="pill active" data-view="tree" role="tab">Tree</button>
+      <button class="pill" data-view="types" role="tab">Types</button>
+      <button class="pill" data-view="packages" role="tab">Packages</button>
+    </div>
+    <input type="search" id="q" placeholder="Filter packages &amp; types…  ( / )" aria-label="filter">
+    <select id="pkg-filter" aria-label="package filter"></select>
+    <label class="check"><input type="checkbox" id="hide-na"> hide n/a rows</label>
+    <button class="btn" id="col-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="col-sheet">Columns</button>
+    <div class="lvl" id="levels" hidden>
+      <span class="lvl-label" id="lvl-label">depth</span>
+      <div class="pills" id="level-pills" role="group" aria-labelledby="lvl-label"></div>
+    </div>
+    <span class="count" id="count"></span>
+    <button class="btn theme" id="theme-toggle" title="toggle black / white" aria-label="toggle theme">◐</button>
+  </nav>
+
+  <main id="main"></main>
+
+  <footer id="foot"></footer>
+</div>
+
+<!-- Root-level overlays: painted above every table and sticky header. -->
+<div class="sheet" id="col-sheet" hidden></div>
+<div class="sheet info" id="info-sheet" hidden role="dialog" aria-modal="false" aria-label="metric explanation" tabindex="-1"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- data ---------- */
+  var payload = JSON.parse(document.getElementById('report-data').textContent);
+  var module = payload.module || '';
+  var report = payload.report || { packages: [] };
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var TYPE_ORDER = ['amc', 'lcom1', 'lcom96b', 'camc', 'tcc', 'cbo', 'reusability'];
+  var PKG_ORDER = ['abstractness', 'instability', 'distance'];
+  var META = {
+    amc:          { label: 'AMC',     full: 'Average Method Complexity',            bounded: false },
+    lcom1:        { label: 'LCOM1',   full: 'Lack of Cohesion in Methods (LCOM1)',  bounded: false },
+    lcom96b:      { label: 'LCOM96b', full: 'Lack of Cohesion (LCOM96b)',           bounded: true },
+    camc:         { label: 'CAMC',    full: 'Cohesion Among Methods of a Class',    bounded: true },
+    tcc:          { label: 'TCC',     full: 'Tight Class Cohesion',                 bounded: true },
+    cbo:          { label: 'CBO',     full: 'Coupling Between Objects',             bounded: false },
+    reusability:  { label: 'Reuse',   full: 'Experimental Reusability Index',       bounded: true },
+    abstractness: { label: 'Abst',    full: 'Abstractness',                         bounded: true },
+    instability:  { label: 'Inst',    full: 'Instability',                          bounded: true },
+    distance:     { label: 'Dist',    full: 'Distance from the Main Sequence',      bounded: true }
+  };
+
+  // Mirrors the terminal renderer's quality map: bounded metrics use fixed
+  // 0–1 thresholds, unbounded ones are judged against their column's range;
+  // abstractness and instability have no good/bad direction.
+  var QUALITY = {
+    camc: { bounded: true },
+    tcc: { bounded: true },
+    reusability: { bounded: true },
+    lcom96b: { lowerBetter: true, bounded: true },
+    distance: { lowerBetter: true, bounded: true },
+    amc: { lowerBetter: true },
+    lcom1: { lowerBetter: true },
+    cbo: { lowerBetter: true }
+  };
+
+  // Metric guide entries by column key — the same payload behind the
+  // standalone --help --web page. They feed the per-column ? info sheets;
+  // META and QUALITY keep driving the cells.
+  var DOCS = {};
+  (JSON.parse(document.getElementById('docs-data').textContent).docs || []).forEach(function (d) {
+    DOCS[d.name] = d;
+  });
+
+  function relPath(path) {
+    if (!module) return path;
+    if (path === module) return '.';
+    if (path.indexOf(module + '/') === 0) return path.slice(module.length + 1);
+    return path;
+  }
+
+  var packages = (report.packages || []).map(function (p) {
+    return {
+      path: p.path,
+      rel: relPath(p.path),
+      ca: p.afferent || 0,
+      ce: p.efferent || 0,
+      funcs: p.funcs || 0,
+      metrics: p.metrics || {},
+      types: (p.types || []).map(function (t) {
+        return {
+          name: t.name,
+          fields: t.fields || 0,
+          methods: t.methods || 0,
+          metrics: t.metrics || {}
+        };
+      })
+    };
+  });
+
+  var typeRows = [];
+  packages.forEach(function (p) {
+    p.types.forEach(function (t) {
+      typeRows.push({
+        pkg: p, name: t.name, fields: t.fields, methods: t.methods,
+        metrics: t.metrics, key: p.path + '.' + t.name
+      });
+    });
+  });
+
+  function columnsOf(list, order) {
+    var present = {};
+    list.forEach(function (m) { Object.keys(m).forEach(function (k) { present[k] = true; }); });
+    var cols = order.filter(function (k) { return present[k]; });
+    Object.keys(present).forEach(function (k) { if (order.indexOf(k) < 0) cols.push(k); });
+    return cols;
+  }
+  var typeCols = columnsOf(typeRows.map(function (r) { return r.metrics; }), TYPE_ORDER);
+  var pkgCols = columnsOf(packages.map(function (p) { return p.metrics; }), PKG_ORDER);
+
+  // Per-column range over applicable values: the bar scale and the relative
+  // quality scale for unbounded metrics.
+  var colRange = {};
+  typeCols.forEach(function (c) {
+    var mn = Infinity, mx = -Infinity;
+    typeRows.forEach(function (r) {
+      var v = r.metrics[c];
+      if (v && v.applicable) { if (v.value < mn) mn = v.value; if (v.value > mx) mx = v.value; }
+    });
+    colRange[c] = { min: mn, max: mx };
+  });
+
+  /* ---------- quality ---------- */
+  function qualityClass(col, value) {
+    var q = QUALITY[col];
+    if (!q) return '';
+    var score;
+    if (q.bounded) {
+      score = Math.max(0, Math.min(1, value));
+    } else {
+      var r = colRange[col];
+      if (!r || r.max === r.min || r.min === Infinity) return '';
+      score = (value - r.min) / (r.max - r.min);
+    }
+    if (q.lowerBetter) score = 1 - score;
+    return score >= 0.66 ? 'q-good' : score >= 0.33 ? 'q-warn' : 'q-bad';
+  }
+
+  /* ---------- tree hierarchy (mirrors the stdout tree) ---------- */
+  function newNode(name, path) {
+    return { name: name, path: path, pkg: null, children: [], _map: {} };
+  }
+  function buildHier() {
+    var root = newNode('', '');
+    packages.forEach(function (p) {
+      if (p.rel === '.') { root.pkg = p; return; }
+      var node = root;
+      p.rel.split('/').forEach(function (seg) {
+        if (!node._map[seg]) {
+          var c = newNode(seg, node.path ? node.path + '/' + seg : seg);
+          node._map[seg] = c;
+          node.children.push(c);
+        }
+        node = node._map[seg];
+      });
+      node.pkg = p;
+    });
+
+    // Compress single-child directory chains without a package of their
+    // own, so "internal" → "features" renders as "internal/features".
+    function compress(n) {
+      while (!n.pkg && n.children.length === 1) {
+        var c = n.children[0];
+        n.name = n.name ? n.name + '/' + c.name : c.name;
+        n.path = c.path;
+        n.pkg = c.pkg;
+        n.children = c.children;
+        n._map = c._map;
+      }
+      n.children.forEach(compress);
+    }
+    root.children.forEach(compress);
+
+    // Aggregate subtree sums for directory means and group ordering.
+    function agg(n) {
+      n.typeAgg = {};
+      n.pkgAgg = {};
+      n.typesTotal = 0;
+      function add(m, col, v) {
+        var s = m[col] || (m[col] = { sum: 0, count: 0 });
+        s.sum += v;
+        s.count++;
+      }
+      if (n.pkg) {
+        n.typesTotal = n.pkg.types.length;
+        n.pkg.types.forEach(function (t) {
+          typeCols.forEach(function (c) {
+            var m = t.metrics[c];
+            if (m && m.applicable) add(n.typeAgg, c, m.value);
+          });
+        });
+        pkgCols.forEach(function (c) {
+          var m = n.pkg.metrics[c];
+          if (m && m.applicable) add(n.pkgAgg, c, m.value);
+        });
+      }
+      n.children.forEach(function (c) {
+        agg(c);
+        n.typesTotal += c.typesTotal;
+        [['typeAgg', typeCols], ['pkgAgg', pkgCols]].forEach(function (pair) {
+          pair[1].forEach(function (col) {
+            var s = c[pair[0]][col];
+            if (s) {
+              var d = n[pair[0]][col] || (n[pair[0]][col] = { sum: 0, count: 0 });
+              d.sum += s.sum;
+              d.count += s.count;
+            }
+          });
+        });
+      });
+    }
+
+    var sections = [];
+    if (root.pkg) {
+      var dot = newNode('.', root.pkg.path);
+      dot.pkg = root.pkg;
+      sections.push(dot);
+    }
+    root.children.forEach(function (c) { sections.push(c); });
+    sections.forEach(agg);
+
+    function setDepth(n, d) {
+      n.depth = d;
+      n.children.forEach(function (c) { setDepth(c, d + 1); });
+    }
+    sections.forEach(function (n) { setDepth(n, 0); });
+
+    return sections;
+  }
+  var hier = buildHier();
+
+  function expandableNode(n) {
+    return n.children.length > 0 || (n.pkg && n.pkg.types.length > 0);
+  }
+  function eachNode(fn) {
+    (function walk(nodes) {
+      nodes.forEach(function (n) { fn(n); walk(n.children); });
+    })(hier);
+  }
+  // Deepest expandable level: depth presets run 1..maxLevel, then "All"
+  // additionally reveals the deepest packages' types.
+  var maxLevel = 0;
+  eachNode(function (n) {
+    if (expandableNode(n)) maxLevel = Math.max(maxLevel, n.depth + 1);
+  });
+
+  function aggMean(n, kind, col) {
+    var s = n[kind][col];
+    return s && s.count ? s.sum / s.count : null;
+  }
+
+  /* ---------- state ---------- */
+  var state = {
+    view: 'tree',
+    q: '',
+    pkg: '',
+    hideNA: false,
+    hidden: {},
+    sort: {
+      types: { key: null, dir: 1 },
+      packages: { key: null, dir: 1 }
+    },
+    collapsed: {},
+    level: 'all'
+  };
+
+  /* ---------- helpers ---------- */
+  function el(tag, attrs, text) {
+    var n = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === 'class') n.className = attrs[k];
+        else n.setAttribute(k, attrs[k]);
+      });
+    }
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function fmt(v) { return v.toFixed(2); }
+  function meta(c) { return META[c] || { label: c.toUpperCase(), full: c, bounded: false }; }
+  function frac(c, v) {
+    var m = meta(c);
+    if (m.bounded) return Math.max(0, Math.min(1, v));
+    var r = colRange[c];
+    return r && r.max > 0 ? Math.max(0, Math.min(1, v / r.max)) : 0;
+  }
+  function visTypeCols() { return typeCols.filter(function (c) { return !state.hidden[c]; }); }
+
+  function valueCell(value, col, opts) {
+    var td = el('td', { class: 'num' });
+    var info = meta(col);
+    var title = info.full + ' = ' + fmt(value);
+    if (opts && opts.mean) title = 'mean ' + title;
+    if (opts && opts.reason) { title += '\n' + opts.reason; td.classList.add('noted'); }
+    if (opts && opts.definition) title += '\n' + opts.definition;
+    td.title = title;
+
+    var qc = qualityClass(col, value);
+    var wrap = el('span', { class: 'cell' + (opts && opts.mean ? ' mean' : '') });
+    wrap.appendChild(el('span', { class: 'val' + (qc ? ' ' + qc : '') }, fmt(value)));
+    var bar = el('span', { class: 'bar', 'aria-hidden': 'true' });
+    bar.appendChild(el('span', {
+      class: 'fill' + (qc ? ' ' + qc : ''),
+      style: 'width:' + (frac(col, value) * 100).toFixed(1) + '%'
+    }));
+    wrap.appendChild(bar);
+    td.appendChild(wrap);
+    return td;
+  }
+  function metricCell(m, c) {
+    if (!m || !m.applicable) {
+      var td = el('td', { class: 'num' });
+      td.appendChild(el('span', { class: 'na', title: m && m.reason ? m.reason : 'not applicable' }, '–'));
+      return td;
+    }
+    return valueCell(m.value, c, { reason: m.reason, definition: m.definition });
+  }
+  function meanCell(v, c) {
+    if (v === null) {
+      var td = el('td', { class: 'num' });
+      td.appendChild(el('span', { class: 'na', title: 'no applicable values below' }, '–'));
+      return td;
+    }
+    return valueCell(v, c, { mean: true });
+  }
+
+  function headerCell(label, key, viewSort, textual, title) {
+    var th = el('th', textual ? { class: 'txt' } : {});
+    var btn = el('button', { class: 'hbtn', type: 'button' });
+    if (title) {
+      th.setAttribute('data-tip', title);
+      btn.setAttribute('aria-label', label + ': ' + title);
+    }
+    btn.appendChild(el('span', {}, label));
+    var arr = el('span', { class: 'arr', 'aria-hidden': 'true' }, '');
+    btn.appendChild(arr);
+    if (viewSort.key === key) {
+      th.setAttribute('aria-sort', viewSort.dir === 1 ? 'ascending' : 'descending');
+      arr.textContent = viewSort.dir === 1 ? '▲' : '▼';
+    }
+    btn.addEventListener('click', function () {
+      if (viewSort.key !== key) { viewSort.key = key; viewSort.dir = 1; }
+      else if (viewSort.dir === 1) { viewSort.dir = -1; }
+      else { viewSort.key = null; viewSort.dir = 1; }
+      paint('sort');
+    });
+    th.appendChild(btn);
+    attachInfo(th, btn, key, label);
+    return th;
+  }
+
+  // plainHeader renders a non-sortable heading. The tree view keeps the
+  // fixed path order of the text report; sorting lives in the flat views.
+  function plainHeader(label, textual, title, key) {
+    var th = el('th', textual ? { class: 'txt' } : {});
+    var span = el('span', { class: 'hlabel' }, label);
+    if (title) th.setAttribute('data-tip', title);
+    th.appendChild(span);
+    attachInfo(th, span, key, label);
+    return th;
+  }
+
+  // attachInfo appends the ? affordance when the column has a guide entry,
+  // wrapping the header control so both share the cell's row.
+  function attachInfo(th, control, key, label) {
+    var d = key && DOCS[key];
+    if (!d) return;
+    var hwrap = el('div', { class: 'hwrap' });
+    th.appendChild(hwrap);
+    hwrap.appendChild(control);
+    var q = el('button', {
+      class: 'qmark', type: 'button',
+      'aria-haspopup': 'dialog', 'aria-expanded': 'false',
+      'aria-label': 'explain ' + label
+    });
+    q.appendChild(el('span', { class: 'qi', 'aria-hidden': 'true' }, '?'));
+    q.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openInfoSheet(d, q);
+    });
+    hwrap.appendChild(q);
+  }
+
+  // n/a sorts last regardless of direction.
+  function cmpVal(a, b, dir) {
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return (a - b) * dir;
+  }
+  function cmpMetric(ma, mb, dir) {
+    return cmpVal(ma && ma.applicable ? ma.value : null, mb && mb.applicable ? mb.value : null, dir);
+  }
+  function cmpText(a, b, dir) { return (a < b ? -1 : a > b ? 1 : 0) * dir; }
+
+  /* ---------- filtering ---------- */
+  function typeMatches(r) {
+    if (state.pkg && r.pkg.path !== state.pkg) return false;
+    if (state.q) {
+      var hay = (r.pkg.rel + ' ' + r.name).toLowerCase();
+      if (hay.indexOf(state.q) < 0 && r.pkg.path.toLowerCase().indexOf(state.q) < 0) return false;
+    }
+    if (state.hideNA) {
+      var cols = visTypeCols();
+      for (var i = 0; i < cols.length; i++) {
+        var m = r.metrics[cols[i]];
+        if (!m || !m.applicable) return false;
+      }
+    }
+    return true;
+  }
+  function typeNAOK(r) {
+    if (!state.hideNA) return true;
+    var cols = visTypeCols();
+    for (var i = 0; i < cols.length; i++) {
+      var m = r.metrics[cols[i]];
+      if (!m || !m.applicable) return false;
+    }
+    return true;
+  }
+  function pkgTextMatch(p) {
+    return !state.q || p.rel.toLowerCase().indexOf(state.q) >= 0 || p.path.toLowerCase().indexOf(state.q) >= 0;
+  }
+  function pkgMatches(p) {
+    if (state.pkg && p.path !== state.pkg) return false;
+    if (!pkgTextMatch(p)) return false;
+    if (state.hideNA && state.view === 'packages') {
+      for (var i = 0; i < pkgCols.length; i++) {
+        var m = p.metrics[pkgCols[i]];
+        if (!m || !m.applicable) return false;
+      }
+    }
+    return true;
+  }
+
+  /* ---------- views ---------- */
+  var main = document.getElementById('main');
+  var shown = { types: 0, packages: 0 };
+
+  function buildTree() {
+    var cols = visTypeCols();
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    hr.appendChild(plainHeader('Path / Type', true, 'module-relative package path, or declared type name'));
+    pkgCols.forEach(function (c) { hr.appendChild(plainHeader(meta(c).label, false, meta(c).full, c)); });
+    cols.forEach(function (c) { hr.appendChild(plainHeader(meta(c).label, false, meta(c).full, c)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    // Prune the static hierarchy against the filters, bottom-up.
+    function prune(n) {
+      var types = [];
+      if (n.pkg) {
+        var showAll = pkgTextMatch(n.pkg) && (!state.pkg || n.pkg.path === state.pkg);
+        n.pkg.types.forEach(function (t) {
+          var r = {
+            pkg: n.pkg, name: t.name, fields: t.fields, methods: t.methods,
+            metrics: t.metrics, key: n.pkg.path + '.' + t.name
+          };
+          if (showAll ? typeNAOK(r) && (!state.pkg || n.pkg.path === state.pkg) : typeMatches(r)) types.push(r);
+        });
+      }
+      var kids = [];
+      n.children.forEach(function (c) {
+        var v = prune(c);
+        if (v) kids.push(v);
+      });
+      var selfVisible = n.pkg && (!state.pkg || n.pkg.path === state.pkg) && (pkgTextMatch(n.pkg) || types.length > 0);
+      if (!selfVisible && kids.length === 0) return null;
+
+      // Fixed path order at every level, mirroring the text report's tree.
+      types.sort(function (a, b) { return cmpText(a.name, b.name, 1); });
+      kids.sort(function (a, b) { return cmpText(a.n.name, b.n.name, 1); });
+
+      var shownTypes = types.length;
+      var shownPkgs = n.pkg ? 1 : 0;
+      kids.forEach(function (k) { shownTypes += k.shownTypes; shownPkgs += k.shownPkgs; });
+      return { n: n, types: types, kids: kids, shownTypes: shownTypes, shownPkgs: shownPkgs };
+    }
+    var sections = [];
+    hier.forEach(function (n) {
+      var v = prune(n);
+      if (v) sections.push(v);
+    });
+
+    var totalTypes = 0, totalPkgs = 0;
+    var tbody = el('tbody');
+
+    function nameCell(v, depth, expandable, expanded) {
+      var td = el('td', { class: 'txt' });
+      td.style.paddingLeft = (12 + depth * 20) + 'px';
+      var label;
+      if (expandable) {
+        label = el('button', { class: 'disc', type: 'button', 'aria-expanded': expanded ? 'true' : 'false' });
+        label.appendChild(el('span', { class: 'caret', 'aria-hidden': 'true' }, '▾'));
+        label.addEventListener('click', function () {
+          if (state.collapsed[v.n.path]) delete state.collapsed[v.n.path];
+          else state.collapsed[v.n.path] = true;
+          state.level = null; // manual toggle: no uniform depth any more
+          syncLevelPills();
+          paint('filter');
+        });
+      } else {
+        label = el('span', { class: 'disc' });
+        label.appendChild(el('span', { class: 'leafpad', 'aria-hidden': 'true' }, ''));
+      }
+      if (v.n.pkg) {
+        label.title = v.n.pkg.path +
+          '\nCa ' + v.n.pkg.ca + ' · Ce ' + v.n.pkg.ce +
+          ' · ' + v.n.pkg.funcs + ' funcs';
+      }
+      label.appendChild(el('span', {}, v.n.name));
+      var badge = v.shownTypes + (v.shownTypes === 1 ? ' type' : ' types');
+      if (v.n.pkg) badge += ' · ' + v.n.pkg.funcs + (v.n.pkg.funcs === 1 ? ' func' : ' funcs');
+      label.appendChild(el('span', { class: 'tcount' }, badge));
+      td.appendChild(label);
+      return td;
+    }
+
+    function emit(v, depth, topLevel) {
+      var n = v.n;
+      var expandable = v.types.length > 0 || v.kids.length > 0;
+      var expanded = !state.collapsed[n.path];
+
+      var tr = el('tr', { class: (n.pkg ? 'pkg-row' : 'dir-row') + (topLevel ? ' section-top' : '') });
+      tr.dataset.key = 'n:' + (n.path || '.');
+      tr.appendChild(nameCell(v, depth, expandable, expanded));
+      pkgCols.forEach(function (c) {
+        if (n.pkg) tr.appendChild(metricCell(n.pkg.metrics[c], c));
+        else tr.appendChild(meanCell(aggMean(n, 'pkgAgg', c), c));
+      });
+      cols.forEach(function (c) { tr.appendChild(meanCell(aggMean(n, 'typeAgg', c), c)); });
+      tbody.appendChild(tr);
+
+      if (n.pkg) totalPkgs++;
+      totalTypes += v.types.length;
+
+      if (!expanded) return;
+
+      v.types.forEach(function (r) {
+        var row = el('tr', { class: 'type-row' });
+        row.dataset.key = r.key;
+        var td = el('td', { class: 'txt typename' });
+        td.style.paddingLeft = (12 + (depth + 1) * 20 + 18) + 'px';
+        var guide = el('span', { class: 'guide', 'aria-hidden': 'true' });
+        guide.style.left = (12 + (depth + 1) * 20 + 4) + 'px';
+        td.appendChild(guide);
+        td.appendChild(el('span', {}, r.name));
+        var stats = el('span', { class: 'tcount' }, r.fields + 'f · ' + r.methods + 'm');
+        stats.title = r.fields + ' fields · ' + r.methods + ' methods';
+        td.appendChild(stats);
+        row.appendChild(td);
+        pkgCols.forEach(function () { row.appendChild(el('td', { class: 'num dim' }, '')); });
+        cols.forEach(function (c) { row.appendChild(metricCell(r.metrics[c], c)); });
+        tbody.appendChild(row);
+      });
+
+      v.kids.forEach(function (k) { emit(k, depth + 1, false); });
+    }
+
+    sections.forEach(function (v, i) { emit(v, 0, i > 0); });
+    table.appendChild(tbody);
+
+    shown.types = totalTypes;
+    shown.packages = totalPkgs;
+    return finishTable(table, sections.length === 0);
+  }
+
+  function buildTypes() {
+    var s = state.sort.types;
+    var cols = visTypeCols();
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    hr.appendChild(headerCell('Package', 'pkg', s, true, 'module-relative package path'));
+    hr.appendChild(headerCell('Type', 'name', s, true, 'declared type name'));
+    hr.appendChild(headerCell('Fields', 'fields', s, false, 'struct field count (embedded fields count one)'));
+    hr.appendChild(headerCell('Methods', 'methods', s, false, 'declared method count'));
+    cols.forEach(function (c) { hr.appendChild(headerCell(meta(c).label, c, s, false, meta(c).full)); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var rows = typeRows.filter(typeMatches);
+    rows = rows.slice().sort(function (a, b) {
+      if (s.key === 'name') return cmpText(a.name, b.name, s.dir) || cmpText(a.pkg.rel, b.pkg.rel, 1);
+      if (s.key === 'pkg') return cmpText(a.pkg.rel, b.pkg.rel, s.dir) || cmpText(a.name, b.name, 1);
+      if (s.key === 'fields') return (a.fields - b.fields) * s.dir || cmpText(a.key, b.key, 1);
+      if (s.key === 'methods') return (a.methods - b.methods) * s.dir || cmpText(a.key, b.key, 1);
+      if (s.key) return cmpMetric(a.metrics[s.key], b.metrics[s.key], s.dir) || cmpText(a.key, b.key, 1);
+      return cmpText(a.pkg.rel, b.pkg.rel, 1) || cmpText(a.name, b.name, 1);
+    });
+
+    var tbody = el('tbody');
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      tr.dataset.key = r.key;
+      tr.appendChild(el('td', { class: 'txt pkgpath', title: r.pkg.path }, r.pkg.rel));
+      tr.appendChild(el('td', { class: 'txt typename' }, r.name));
+      tr.appendChild(el('td', { class: 'num dim' }, String(r.fields)));
+      tr.appendChild(el('td', { class: 'num dim' }, String(r.methods)));
+      cols.forEach(function (c) { tr.appendChild(metricCell(r.metrics[c], c)); });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    shown.types = rows.length;
+    shown.packages = null;
+    return finishTable(table, rows.length === 0);
+  }
+
+  function buildPackages() {
+    var s = state.sort.packages;
+    var table = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    hr.appendChild(headerCell('Package', 'name', s, true, 'module-relative package path'));
+    hr.appendChild(headerCell('Ca', 'ca', s, false, 'afferent coupling: analyzed packages importing this one'));
+    hr.appendChild(headerCell('Ce', 'ce', s, false, 'efferent coupling: in-scope imports of this package'));
+    pkgCols.forEach(function (c) { hr.appendChild(headerCell(meta(c).label, c, s, false, meta(c).full)); });
+    hr.appendChild(headerCell('Funcs', 'funcs', s, false, 'declared functions and methods'));
+    hr.appendChild(headerCell('Types', 'types', s, false, 'analyzed named types'));
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var rows = packages.filter(pkgMatches);
+    rows = rows.slice().sort(function (a, b) {
+      if (s.key === 'name') return cmpText(a.rel, b.rel, s.dir);
+      if (s.key === 'ca') return (a.ca - b.ca) * s.dir || cmpText(a.rel, b.rel, 1);
+      if (s.key === 'ce') return (a.ce - b.ce) * s.dir || cmpText(a.rel, b.rel, 1);
+      if (s.key === 'funcs') return (a.funcs - b.funcs) * s.dir || cmpText(a.rel, b.rel, 1);
+      if (s.key === 'types') return (a.types.length - b.types.length) * s.dir || cmpText(a.rel, b.rel, 1);
+      if (s.key) return cmpMetric(a.metrics[s.key], b.metrics[s.key], s.dir) || cmpText(a.rel, b.rel, 1);
+      return cmpText(a.rel, b.rel, 1);
+    });
+
+    var tbody = el('tbody');
+    rows.forEach(function (p) {
+      var tr = el('tr');
+      tr.dataset.key = p.path;
+      tr.appendChild(el('td', { class: 'txt typename', title: p.path }, p.rel));
+      tr.appendChild(el('td', { class: 'num dim' }, String(p.ca)));
+      tr.appendChild(el('td', { class: 'num dim' }, String(p.ce)));
+      pkgCols.forEach(function (c) { tr.appendChild(metricCell(p.metrics[c], c)); });
+      tr.appendChild(el('td', { class: 'num dim' }, String(p.funcs)));
+      tr.appendChild(el('td', { class: 'num dim' }, String(p.types.length)));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    shown.types = null;
+    shown.packages = rows.length;
+    return finishTable(table, rows.length === 0);
+  }
+
+  function finishTable(table, empty) {
+    var wrap = el('div', { class: 'tablewrap' });
+    if (empty) {
+      wrap.appendChild(el('div', { class: 'empty' },
+        packages.length ? 'nothing matches the current filters' : 'no packages were analyzed'));
+    } else {
+      wrap.appendChild(table);
+    }
+    return wrap;
+  }
+
+  /* ---------- paint pipeline ---------- */
+  function build() {
+    closeInfoSheet(false); // repaint discards the anchoring ? buttons
+    var view = state.view === 'types' ? buildTypes() : state.view === 'packages' ? buildPackages() : buildTree();
+    main.textContent = '';
+    main.appendChild(view);
+    updateCount();
+    document.getElementById('levels').hidden = !(state.view === 'tree' && shown.packages > 0);
+  }
+
+  function animateIn() {
+    if (reduceMotion) return;
+    var rows = main.querySelectorAll('tbody tr');
+    for (var i = 0; i < rows.length; i++) {
+      if (i > 40) break;
+      rows[i].classList.add('enter');
+      rows[i].style.animationDelay = (Math.min(i, 25) * 22) + 'ms';
+    }
+    var fills = main.querySelectorAll('.fill');
+    var targets = [];
+    fills.forEach(function (f) { targets.push(f.style.width); f.style.transition = 'none'; f.style.width = '0%'; });
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        fills.forEach(function (f, i) { f.style.transition = ''; f.style.width = targets[i]; });
+      });
+    });
+  }
+
+  function flip(render) {
+    if (reduceMotion) { render(); return; }
+    var old = {};
+    var count = 0;
+    main.querySelectorAll('[data-key]').forEach(function (r) {
+      old[r.dataset.key] = r.getBoundingClientRect().top; count++;
+    });
+    render();
+    if (!count || count > 400) return;
+    var moved = [];
+    main.querySelectorAll('[data-key]').forEach(function (r) {
+      var prev = old[r.dataset.key];
+      if (prev === undefined) return;
+      var dy = prev - r.getBoundingClientRect().top;
+      if (dy) {
+        r.style.transition = 'none';
+        r.style.transform = 'translateY(' + dy + 'px)';
+        moved.push(r);
+      }
+    });
+    if (!moved.length) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        moved.forEach(function (r) {
+          r.style.transition = 'transform .35s cubic-bezier(.2,.7,.2,1)';
+          r.style.transform = '';
+          r.addEventListener('transitionend', function () { r.style.transition = ''; }, { once: true });
+        });
+      });
+    });
+  }
+
+  function paint(trigger) {
+    if (trigger === 'sort') flip(build);
+    else build();
+    if (trigger === 'view' || trigger === 'init') animateIn();
+  }
+
+  function updateCount() {
+    var parts = [];
+    if (shown.types !== null) {
+      parts.push(shown.types === typeRows.length
+        ? typeRows.length + ' types'
+        : shown.types + ' / ' + typeRows.length + ' types');
+    }
+    if (shown.packages !== null) {
+      parts.push(shown.packages === packages.length
+        ? packages.length + ' packages'
+        : shown.packages + ' / ' + packages.length + ' packages');
+    }
+    document.getElementById('count').textContent = parts.join(' · ');
+  }
+
+  /* ---------- header, tiles, footer ---------- */
+  var tool = report.tool || { name: 'go-modularity', version: '' };
+  document.getElementById('tool-name').textContent = tool.name || 'go-modularity';
+  document.getElementById('tool-ver').textContent =
+    (tool.version ? tool.version + ' · ' : '') + 'schema ' + (report.schema_version || '?');
+  var modLine = document.getElementById('module-line');
+  if (module) {
+    modLine.appendChild(document.createTextNode('module '));
+    modLine.appendChild(el('b', {}, module));
+    document.title = module + ' — go-modularity';
+  } else {
+    modLine.textContent = 'module unknown';
+  }
+
+  function tile(value, label, opts) {
+    var t = el('div', { class: 'tile' });
+    var qc = opts && opts.col ? qualityClass(opts.col, value) : '';
+    var n = el('div', { class: 'n' + (qc ? ' ' + qc : '') }, '0');
+    t.appendChild(n);
+    t.appendChild(el('div', { class: 'l' }, label));
+    var decimals = opts && opts.decimals;
+    if (reduceMotion) {
+      n.textContent = decimals ? value.toFixed(2) : String(Math.round(value));
+    } else {
+      var t0 = null;
+      var dur = 750;
+      var step = function (ts) {
+        if (t0 === null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);
+        var v = value * eased;
+        n.textContent = decimals ? v.toFixed(2) : String(Math.round(v));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    return t;
+  }
+  function meanOf(list, col) {
+    var s = 0, n = 0;
+    list.forEach(function (m) {
+      var v = m[col];
+      if (v && v.applicable) { s += v.value; n++; }
+    });
+    return n ? s / n : null;
+  }
+  var tiles = document.getElementById('tiles');
+  tiles.appendChild(tile(packages.length, 'packages'));
+  tiles.appendChild(tile(typeRows.length, 'types'));
+  var totalFuncs = packages.reduce(function (sum, p) { return sum + p.funcs; }, 0);
+  tiles.appendChild(tile(totalFuncs, 'funcs'));
+  var meanReuse = meanOf(typeRows.map(function (r) { return r.metrics; }), 'reusability');
+  if (meanReuse !== null) tiles.appendChild(tile(meanReuse, 'mean reusability', { decimals: true, col: 'reusability' }));
+  var meanDist = meanOf(packages.map(function (p) { return p.metrics; }), 'distance');
+  if (meanDist !== null) tiles.appendChild(tile(meanDist, 'mean distance', { decimals: true, col: 'distance' }));
+
+  var foot = document.getElementById('foot');
+  var legend = el('span', { class: 'legend' });
+  [['good', 'good'], ['warn', 'mixed'], ['bad', 'review']].forEach(function (pair) {
+    var item = el('span', {});
+    item.appendChild(el('span', { class: 'swatch ' + pair[0], 'aria-hidden': 'true' }));
+    item.appendChild(document.createTextNode(pair[1]));
+    legend.appendChild(item);
+  });
+  foot.appendChild(legend);
+  foot.appendChild(el('span', {}, 'colors are hints, not verdicts — unbounded metrics are judged against their column range'));
+  foot.appendChild(el('span', {}, '– = not applicable (hover for the reason)'));
+  foot.appendChild(el('span', {}, 'generated by ' + (tool.name || 'go-modularity') + ' ' + (tool.version || '')));
+
+  /* ---------- controls ---------- */
+  document.getElementById('views').addEventListener('click', function (e) {
+    var b = e.target.closest('.pill');
+    if (!b || b.dataset.view === state.view) return;
+    state.view = b.dataset.view;
+    document.querySelectorAll('#views .pill').forEach(function (p) { p.classList.toggle('active', p === b); });
+    paint('view');
+  });
+
+  var q = document.getElementById('q');
+  var debounce = null;
+  q.addEventListener('input', function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(function () {
+      state.q = q.value.trim().toLowerCase();
+      paint('filter');
+    }, 120);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '/' && document.activeElement !== q && !/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      q.focus();
+    }
+    if (e.key === 'Escape') {
+      closeSheet();
+      closeInfoSheet(true);
+
+      if (document.activeElement === q) {
+        q.value = '';
+        state.q = '';
+        q.blur();
+        paint('filter');
+      }
+    }
+  });
+
+  var pkgFilter = document.getElementById('pkg-filter');
+  pkgFilter.appendChild(el('option', { value: '' }, 'all packages'));
+  packages.slice().sort(function (a, b) { return cmpText(a.rel, b.rel, 1); }).forEach(function (p) {
+    pkgFilter.appendChild(el('option', { value: p.path }, p.rel));
+  });
+  pkgFilter.addEventListener('change', function () {
+    state.pkg = pkgFilter.value;
+    paint('filter');
+  });
+
+  document.getElementById('hide-na').addEventListener('change', function (e) {
+    state.hideNA = e.target.checked;
+    paint('filter');
+  });
+
+  var sheet = document.getElementById('col-sheet');
+  var colBtn = document.getElementById('col-btn');
+  typeCols.forEach(function (c) {
+    var lab = el('label', { class: 'check' });
+    var box = el('input', { type: 'checkbox' });
+    box.checked = true;
+    box.addEventListener('change', function () {
+      if (box.checked) delete state.hidden[c];
+      else state.hidden[c] = true;
+      paint('filter');
+    });
+    lab.appendChild(box);
+    lab.appendChild(document.createTextNode(meta(c).label));
+    lab.title = meta(c).full;
+    sheet.appendChild(lab);
+  });
+
+  function closeSheet() {
+    if (sheet.hidden) return;
+    sheet.hidden = true;
+    colBtn.classList.remove('active');
+    colBtn.setAttribute('aria-expanded', 'false');
+  }
+  function positionSheet() {
+    var r = colBtn.getBoundingClientRect();
+    sheet.style.top = (r.bottom + 6) + 'px';
+    sheet.style.left = Math.max(12, Math.min(r.left, window.innerWidth - sheet.offsetWidth - 12)) + 'px';
+  }
+  colBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (!sheet.hidden) {
+      closeSheet();
+      return;
+    }
+    sheet.hidden = false;
+    colBtn.classList.add('active');
+    colBtn.setAttribute('aria-expanded', 'true');
+    positionSheet();
+  });
+  document.addEventListener('click', function (e) {
+    if (!sheet.hidden && !sheet.contains(e.target)) closeSheet();
+  });
+  window.addEventListener('resize', closeSheet);
+  // The sheet is position:fixed, so it follows its button while scrolling.
+  window.addEventListener('scroll', function () {
+    if (!sheet.hidden) positionSheet();
+  }, { passive: true });
+
+  // Metric info sheet: anchored to the ? button that opened it.
+  var infoSheet = document.getElementById('info-sheet');
+  var infoAnchor = null;
+
+  function renderInfoSheet(d) {
+    infoSheet.textContent = '';
+    var h = el('h3', {});
+    h.appendChild(el('span', {}, d.label));
+    h.appendChild(el('span', { class: 'full' }, d.full_name));
+    infoSheet.appendChild(h);
+
+    var traits = [d.scope === 'structural' ? 'counted' : d.scope + ' metric'];
+    if (d.scope !== 'structural') traits.push(d.bounded ? 'bounded 0–1' : 'unbounded');
+    if (d.direction === 'lower') traits.push('↓ lower is better');
+    else if (d.direction === 'higher') traits.push('↑ higher is better');
+    else traits.push('no universal direction');
+    infoSheet.appendChild(el('p', { class: 'muted' }, traits.join(' · ')));
+
+    if (d.formula_mathml) {
+      var f = el('div', { class: 'formula', role: 'img', 'aria-label': d.formula_latex || '' });
+      // formula_mathml is compile-time markup from the tool's own guide
+      // catalog: the ONLY field ever assigned via innerHTML. Every other
+      // field is inserted with textContent.
+      f.innerHTML = d.formula_mathml;
+      infoSheet.appendChild(f);
+    }
+
+    infoSheet.appendChild(el('p', {}, d.summary + ' ' + d.how));
+    infoSheet.appendChild(el('p', {}, d.interpretation));
+    if (d.not_applicable) infoSheet.appendChild(el('p', { class: 'muted' }, 'n/a: ' + d.not_applicable));
+    if (d.example) infoSheet.appendChild(el('p', { class: 'muted' }, 'example: ' + d.example));
+
+    var hint = el('p', { class: 'hint' });
+    hint.appendChild(document.createTextNode('full guide: '));
+    hint.appendChild(el('code', {}, 'go-modularity --help --web'));
+    infoSheet.appendChild(hint);
+  }
+  function positionInfoSheet() {
+    if (!infoAnchor) return;
+    var r = infoAnchor.getBoundingClientRect();
+    infoSheet.style.top = Math.max(12, Math.min(r.bottom + 6, window.innerHeight - infoSheet.offsetHeight - 12)) + 'px';
+    infoSheet.style.left = Math.max(12, Math.min(r.left, window.innerWidth - infoSheet.offsetWidth - 12)) + 'px';
+  }
+  function closeInfoSheet(restoreFocus) {
+    if (infoSheet.hidden) return;
+    infoSheet.hidden = true;
+    if (infoAnchor) {
+      infoAnchor.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) infoAnchor.focus();
+    }
+    infoAnchor = null;
+  }
+  function openInfoSheet(d, anchor) {
+    if (!infoSheet.hidden && infoAnchor === anchor) {
+      closeInfoSheet(true);
+      return;
+    }
+    closeSheet();
+    closeInfoSheet(false);
+    renderInfoSheet(d);
+    infoAnchor = anchor;
+    anchor.setAttribute('aria-expanded', 'true');
+    infoSheet.hidden = false;
+    positionInfoSheet();
+    infoSheet.focus();
+  }
+  document.addEventListener('click', function (e) {
+    if (!infoSheet.hidden && !infoSheet.contains(e.target)) closeInfoSheet(false);
+  });
+  window.addEventListener('resize', function () { closeInfoSheet(false); });
+  window.addEventListener('scroll', function () {
+    if (!infoSheet.hidden) positionInfoSheet();
+  }, { passive: true });
+
+  // Depth presets: level N expands the tree to depth N and collapses
+  // everything below; "All" additionally reveals the deepest types.
+  var levelPills = document.getElementById('level-pills');
+
+  function syncLevelPills() {
+    levelPills.querySelectorAll('.pill').forEach(function (p) {
+      p.classList.toggle('active', String(state.level) === p.dataset.level);
+    });
+  }
+  function applyLevel(level) {
+    state.level = level;
+    state.collapsed = {};
+    if (level !== 'all') {
+      // Level N shows rows down to depth N-1: nodes at that depth and
+      // below stay collapsed, so "1" is just the top-level overview.
+      eachNode(function (n) {
+        if (expandableNode(n) && n.depth >= level - 1) state.collapsed[n.path] = true;
+      });
+    }
+    syncLevelPills();
+    paint('filter');
+  }
+
+  var levels = [];
+  for (var l = 1; l <= maxLevel; l++) levels.push(l);
+  levels.push('all');
+  levels.forEach(function (level) {
+    var pill = el('button', {
+      class: 'pill', type: 'button',
+      'data-level': String(level),
+      'aria-label': level === 'all' ? 'expand everything' : 'expand to depth ' + level
+    }, level === 'all' ? 'All' : String(level));
+    pill.addEventListener('click', function () { applyLevel(level); });
+    levelPills.appendChild(pill);
+  });
+  syncLevelPills();
+
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('gm-theme', next); } catch (e) { /* private mode */ }
+  });
+
+  /* ---------- go ---------- */
+  paint('init');
+})();
+</script>
+</body>
+</html>

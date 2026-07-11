@@ -54,6 +54,8 @@ func render(w io.Writer, report gomodularity.Report, format domain.Format, opts 
 		cw.Flush()
 
 		return cw.Error()
+	case domain.FormatWeb:
+		return renderWeb(w, report)
 	default:
 		return fmt.Errorf("unknown report format %q", format)
 	}
@@ -85,6 +87,12 @@ type jsonTool struct {
 type jsonPackage struct {
 	// Path is the package's import path.
 	Path string `json:"path"`
+	// Afferent counts analyzed packages importing this package (Ca).
+	Afferent int `json:"afferent"`
+	// Efferent counts this package's in-scope imports (Ce).
+	Efferent int `json:"efferent"`
+	// Funcs counts the package's declared functions and methods.
+	Funcs int `json:"funcs"`
 	// Metrics maps metric names to results in the fixed order.
 	Metrics orderedMetrics `json:"metrics"`
 	// Types are the package's analyzed types in report order.
@@ -99,6 +107,10 @@ func (p jsonPackage) String() string {
 type jsonType struct {
 	// Name is the type's declared name.
 	Name string `json:"name"`
+	// Fields is the struct field count (embedded fields count one).
+	Fields int `json:"fields"`
+	// Methods is the declared method count.
+	Methods int `json:"methods"`
 	// Metrics maps metric names to results in the fixed order.
 	Metrics orderedMetrics `json:"metrics"`
 }
@@ -181,7 +193,9 @@ func encodeMetricEntry(buf *bytes.Buffer, r metrics.MetricResult) error {
 	return nil
 }
 
-func renderJSON(w io.Writer, report gomodularity.Report) error {
+// buildJSONReport maps the report onto the versioned JSON schema. It is
+// shared by the JSON format and the web report's embedded payload.
+func buildJSONReport(report gomodularity.Report) jsonReport {
 	out := jsonReport{
 		SchemaVersion: report.SchemaVersion,
 		Tool:          jsonTool{Name: report.Tool.Name, Version: report.Tool.Version},
@@ -189,19 +203,31 @@ func renderJSON(w io.Writer, report gomodularity.Report) error {
 	}
 	for i, pkg := range report.Packages {
 		jp := jsonPackage{
-			Path:    pkg.Path,
-			Metrics: orderedMetrics(pkg.Metrics),
-			Types:   make([]jsonType, len(pkg.Types)),
+			Path:     pkg.Path,
+			Afferent: pkg.Afferent,
+			Efferent: pkg.Efferent,
+			Funcs:    pkg.Funcs,
+			Metrics:  orderedMetrics(pkg.Metrics),
+			Types:    make([]jsonType, len(pkg.Types)),
 		}
 		for j, t := range pkg.Types {
-			jp.Types[j] = jsonType{Name: t.Name, Metrics: orderedMetrics(t.Metrics)}
+			jp.Types[j] = jsonType{
+				Name:    t.Name,
+				Fields:  t.Fields,
+				Methods: t.Methods,
+				Metrics: orderedMetrics(t.Metrics),
+			}
 		}
 
 		out.Packages[i] = jp
 	}
 
+	return out
+}
+
+func renderJSON(w io.Writer, report gomodularity.Report) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
-	return enc.Encode(out)
+	return enc.Encode(buildJSONReport(report))
 }

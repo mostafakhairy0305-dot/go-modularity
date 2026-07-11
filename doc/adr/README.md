@@ -17,3 +17,5 @@ Decision log for go-modularity, managed with `task adrs:*`
 * [12. Use Task with vendored taskfiles synced by taskotter](0012-use-task-with-vendored-taskfiles-synced-by-taskotter.md)
 * [13. Run lint and test coverage in GitHub Actions CI](0013-run-lint-and-test-coverage-in-github-actions-ci.md)
 * [14. Use adrs to manage architecture decision records](0014-use-adrs-to-manage-architecture-decision-records.md)
+* [15. Render a self-contained HTML web report](0015-render-a-self-contained-html-web-report.md)
+* [16. Generate a self-contained web help page for metrics](0016-generate-a-self-contained-web-help-page-for-metrics.md)

@@ -47,12 +47,20 @@ func Analyze(ctx context.Context, config Config) (Report, error) {
 	}
 	for i, pkg := range result.Packages {
 		out := PackageReport{
-			Path:    pkg.Path,
-			Metrics: pkg.Metrics,
-			Types:   make([]TypeReport, len(pkg.Types)),
+			Path:     pkg.Path,
+			Afferent: pkg.Afferent,
+			Efferent: pkg.Efferent,
+			Funcs:    pkg.Funcs,
+			Metrics:  pkg.Metrics,
+			Types:    make([]TypeReport, len(pkg.Types)),
 		}
 		for j, t := range pkg.Types {
-			out.Types[j] = TypeReport{Name: t.Name, Metrics: t.Metrics}
+			out.Types[j] = TypeReport{
+				Name:    t.Name,
+				Fields:  t.Fields,
+				Methods: t.Methods,
+				Metrics: t.Metrics,
+			}
 		}
 
 		report.Packages[i] = out

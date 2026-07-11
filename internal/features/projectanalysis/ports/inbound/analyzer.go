@@ -39,6 +39,10 @@ type Options struct {
 type TypeResult struct {
 	// Name is the type's declared name.
 	Name string
+	// Fields is the type's struct field count (embedded fields count one).
+	Fields int
+	// Methods is the type's declared method count.
+	Methods int
 	// Metrics holds the type's display metrics in the fixed metric order.
 	Metrics []metrics.MetricResult
 }
@@ -47,6 +51,12 @@ type TypeResult struct {
 type PackageResult struct {
 	// Path is the package's import path.
 	Path string
+	// Afferent counts analyzed packages importing this package (Ca).
+	Afferent int
+	// Efferent counts this package's in-scope imports (Ce).
+	Efferent int
+	// Funcs counts the package's declared functions and methods.
+	Funcs int
 	// Metrics holds the package's display metrics in the fixed order.
 	Metrics []metrics.MetricResult
 	// Types are the package's analyzed types, sorted by name.

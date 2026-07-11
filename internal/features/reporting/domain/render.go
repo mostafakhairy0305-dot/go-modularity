@@ -20,12 +20,14 @@ const (
 	FormatJSON Format = "json"
 	// FormatCSV renders one row per entity and metric.
 	FormatCSV Format = "csv"
+	// FormatWeb renders a self-contained interactive HTML report.
+	FormatWeb Format = "web"
 )
 
 // ParseFormat validates a format name.
 func ParseFormat(name string) (Format, bool) {
 	switch Format(name) {
-	case FormatText, FormatJSON, FormatCSV:
+	case FormatText, FormatJSON, FormatCSV, FormatWeb:
 		return Format(name), true
 	}
 

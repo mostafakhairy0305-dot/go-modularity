@@ -16,6 +16,9 @@ type PackageExtract struct {
 	InModule bool
 	// Imports are the package's distinct import paths, without self-imports.
 	Imports []string
+	// FuncCount is the number of declared functions and methods in the
+	// package's non-excluded files.
+	FuncCount int
 	// Types are the package's extracted named types, in any order.
 	Types []TypeExtract
 }

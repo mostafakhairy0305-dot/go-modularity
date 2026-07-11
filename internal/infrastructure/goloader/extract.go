@@ -34,9 +34,10 @@ func extractPackage(pkg *packages.Package, opts extractorOptions) domain.Package
 	generated, funcDecls, typeDocs, fieldDocs := indexSyntax(pkg)
 
 	out := domain.PackageExtract{
-		Path:     pkg.PkgPath,
-		InModule: inModule(pkg, opts.modulePath),
-		Imports:  importPaths(pkg),
+		Path:      pkg.PkgPath,
+		InModule:  inModule(pkg, opts.modulePath),
+		Imports:   importPaths(pkg),
+		FuncCount: countFuncDecls(pkg, opts.includeGenerated, generated),
 	}
 
 	scope := pkg.Types.Scope()
@@ -60,6 +61,26 @@ func extractPackage(pkg *packages.Package, opts extractorOptions) domain.Package
 	}
 
 	return out
+}
+
+// countFuncDecls counts the package's declared functions and methods in
+// non-excluded files.
+func countFuncDecls(pkg *packages.Package, includeGenerated bool, generated map[string]bool) int {
+	count := 0
+
+	for _, file := range pkg.Syntax {
+		if !includeGenerated && generated[pkg.Fset.Position(file.Package).Filename] {
+			continue
+		}
+
+		for _, decl := range file.Decls {
+			if _, ok := decl.(*ast.FuncDecl); ok {
+				count++
+			}
+		}
+	}
+
+	return count
 }
 
 // indexSyntax walks the ASTs once, recording generated files, method

@@ -3,7 +3,9 @@ package gomodularity
 import "github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 
 // SchemaVersion is the version of the report schema produced by Analyze.
-const SchemaVersion = "1"
+// Version 2 added the structural facts: afferent/efferent coupling and
+// function counts per package, field and method counts per type.
+const SchemaVersion = "2"
 
 // ToolName is the canonical tool name embedded in reports.
 const ToolName = "go-modularity"
@@ -30,18 +32,29 @@ type Report struct {
 	Packages []PackageReport
 }
 
-// PackageReport carries one package's metrics and its analyzed types.
-// Metrics appear in the fixed metric order and contain only the selected
-// display set. Types are sorted by name.
+// PackageReport carries one package's structural facts, its metrics, and
+// its analyzed types. Metrics appear in the fixed metric order and contain
+// only the selected display set. Types are sorted by name.
 type PackageReport struct {
-	Path    string
+	Path string
+	// Afferent counts analyzed packages importing this package (Ca).
+	Afferent int
+	// Efferent counts this package's in-scope imports (Ce), honoring the
+	// configured dependency scope.
+	Efferent int
+	// Funcs counts the package's declared functions and methods.
+	Funcs   int
 	Metrics []MetricResult
 	Types   []TypeReport
 }
 
-// TypeReport carries one named type's metrics in the fixed metric order,
-// restricted to the selected display set.
+// TypeReport carries one named type's structural facts and its metrics in
+// the fixed metric order, restricted to the selected display set.
 type TypeReport struct {
-	Name    string
+	Name string
+	// Fields is the struct field count (embedded fields count one).
+	Fields int
+	// Methods is the declared method count.
+	Methods int
 	Metrics []MetricResult
 }

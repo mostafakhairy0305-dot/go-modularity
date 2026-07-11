@@ -57,6 +57,9 @@ type PackageFacts struct {
 	// Imports are the package's distinct import paths, sorted, without
 	// self-imports. Scope filtering happens in the architecture feature.
 	Imports []string
+	// FuncCount is the number of declared functions and methods in the
+	// package's non-excluded files.
+	FuncCount int
 	// TypeIDs are the package's analyzed types in name order.
 	TypeIDs []int
 }

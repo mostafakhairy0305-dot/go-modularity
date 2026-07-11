@@ -2,7 +2,7 @@
 
 `go-modularity` analyzes Go packages and reports type-level and package-level
 modularity metrics. It can render a readable terminal table, a stable JSON
-schema, or flat CSV rows for scripts.
+schema, flat CSV rows for scripts, or an interactive single-file HTML report.
 
 ## Install
 
@@ -83,7 +83,8 @@ go-modularity -format=json ./...
 | Option | Meaning | Default | Example |
 | --- | --- | --- | --- |
 | `patterns...` | Package patterns passed to the Go package loader. Empty means all packages below the current directory. | `./...` | `go-modularity ./internal/...` |
-| `-format` | Output format. Accepted values are `text`, `json`, and `csv`. | `text` | `go-modularity -format=json ./...` |
+| `-format` | Output format. Accepted values are `text`, `json`, `csv`, and `web`. | `text` | `go-modularity -format=json ./...` |
+| `-web` | Shorthand for `-format=web`. Without `-output` the report is written to `modularity-report.html` and opened in the default browser (only when stdout is a terminal). Combining it with a different explicit `-format` is a usage error. Combined with `--help` it opens the metrics guide instead (see below). | `false` | `go-modularity -web ./...` |
 | `-output` | Write the report to a file instead of stdout. | stdout | `go-modularity -output=modularity.txt ./...` |
 | `-explain` | In text output, include notes for not-applicable metrics and dropped reusability components. | `false` | `go-modularity -explain ./...` |
 | `-metrics` | Comma-separated display metric list. Dependencies needed to compute selected metrics are computed automatically but not shown unless selected. | all except `cbo` | `go-modularity -metrics=amc,lcom1,tcc ./...` |
@@ -155,7 +156,7 @@ Shape:
 
 ```json
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "tool": {
     "name": "go-modularity",
     "version": "dev"
@@ -163,6 +164,9 @@ Shape:
   "packages": [
     {
       "path": "example.com/module/pkg",
+      "afferent": 3,
+      "efferent": 2,
+      "funcs": 14,
       "metrics": {
         "abstractness": {
           "scope": "package",
@@ -174,6 +178,8 @@ Shape:
       "types": [
         {
           "name": "Service",
+          "fields": 4,
+          "methods": 6,
           "metrics": {
             "amc": {
               "scope": "type",
@@ -193,14 +199,19 @@ JSON field meanings:
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | Output schema version. Current value is `1`. |
+| `schema_version` | Output schema version. Current value is `2` (version 2 added the structural facts below). |
 | `tool.name` | Tool name, always `go-modularity`. |
 | `tool.version` | Build version embedded at link time. Local development builds usually report `dev`. |
 | `packages` | Analyzed packages, sorted by import path so repeated runs are stable. |
 | `packages[].path` | Full Go import path of the package. Use this as the package identifier. |
+| `packages[].afferent` | Ca: how many analyzed packages import this one. Always measured within the analyzed set. |
+| `packages[].efferent` | Ce: how many packages this one imports, counted under the configured `-dependency-scope`. |
+| `packages[].funcs` | Number of declared functions and methods in the package's analyzed files. |
 | `packages[].metrics` | Package-level metric object keyed by metric name. These metrics describe the package as a whole. |
 | `packages[].types` | Named types in the package, sorted by type name. Each entry carries the selected type-level metrics for that type. |
 | `packages[].types[].name` | Declared type name, such as `Service` or `Repository`. |
+| `packages[].types[].fields` | Struct field count; an embedded field counts as one. `0` for non-struct types. |
+| `packages[].types[].methods` | Declared method count (promoted methods excluded). |
 | `packages[].types[].metrics` | Type-level metric object keyed by metric name. These metrics describe that type only. |
 | `metrics.<name>.scope` | Entity kind for the metric: `package` for package metrics or `type` for type metrics. |
 | `metrics.<name>.value` | Numeric score. Present only when `applicable` is `true`; absent when the metric cannot be calculated honestly. |
@@ -212,6 +223,49 @@ Metric objects are keyed by metric name in the fixed render order. A missing
 metric usually means it was not selected by `-metrics`; a present metric with
 `"applicable": false` means it was selected but could not be calculated for
 that entity.
+
+### Web
+
+Web output is one self-contained HTML file: the versioned JSON report is
+embedded in the page and rendered by inline vanilla JavaScript — no external
+requests, no server, and it works offline straight from `file://`.
+
+```sh
+go-modularity -web ./...
+go-modularity -format=web -output=report.html ./...
+```
+
+Without `-output` the report is written to `modularity-report.html` and, when
+stdout is a terminal, opened in the default browser. What the page offers:
+
+| Feature | Meaning |
+| --- | --- |
+| Views | `Tree` (the same directory tree as the text report: nested directories with compressed single-child chains, collapsible at every level, directory and package rows carrying subtree means, plus one-click depth presets `1…N`/`All`), `Types` (flat table of every type with its field and method counts), and `Packages` (flat table with `Ca`/`Ce` coupling, function and type counts, and package metrics). |
+| Sorting | In the `Types` and `Packages` views, click any column header to sort ascending/descending; not-applicable values always sort last. The tree view keeps the fixed path order of the text report. |
+| Filtering | Live text search (press `/`), a package dropdown, a hide-n/a-rows toggle, and a column show/hide picker. |
+| Values | Each cell shows the value with a mini-bar (bounded metrics absolute 0–1, unbounded relative to their column maximum). Values and bars are colored green (good), orange (mixed), or red (review) with the same quality rules as the terminal renderer — fixed thresholds for bounded metrics, column-range-relative for unbounded ones; `abstractness` and `instability` stay neutral. Hover a value or `–` for the full metric name, reason, and versioned definition. |
+| Theme | Monochrome black/white chrome — green/orange/red are reserved for metric quality. The toggle switches black-on-white and white-on-black; the default follows the system color scheme. |
+| Motion | Row and bar animations respect `prefers-reduced-motion`. |
+| Explanations | Every documented column header carries a `?` button opening an info sheet with the metric's typeset formula, meaning, good/bad direction, and n/a conditions — the same content as the metrics guide below. |
+
+The embedded payload wraps the same schema as `-format=json` (adding only the
+module path), so anything you read from the JSON format applies to the web
+report too.
+
+#### Metrics guide (`--help --web`)
+
+```sh
+go-modularity --help --web
+```
+
+Combining `--help` and `--web` (either order) writes a self-contained
+metrics guide to the OS temp directory (`go-modularity-help-*.html`), logs
+the path, and — when stdout is a terminal — opens it in the default
+browser. The guide explains every reported field: the formula as native
+MathML (authored from LaTeX, no math library needed), how it is calculated,
+what its values mean, when they are good or bad and why, the exact color
+thresholds, n/a conventions, and a worked example each. Unlike plain
+`--help` (a usage error, exit `2`), `--help --web` exits `0`.
 
 ### CSV
 
@@ -350,6 +404,12 @@ Use transitive field usage for cohesion:
 go-modularity -field-usage=transitive -metrics=lcom1,lcom96b,tcc ./...
 ```
 
+Explore the report interactively in a browser:
+
+```sh
+go-modularity -web ./...
+```
+
 Run in CI and save machine-readable output:
 
 ```sh
@@ -368,5 +428,5 @@ go-modularity -cpu-profile=cpu.prof -memory-profile=heap.prof ./...
 | --- | --- |
 | `0` | Success. |
 | `1` | Analysis, profiling, or report writing failed. |
-| `2` | Command-line usage error, such as an invalid flag or output format. |
+| `2` | Command-line usage error, such as an invalid flag or output format. Plain `--help` exits `2`; `--help --web` writes the metrics guide and exits `0`. |
 | `130` | The run was cancelled by a signal (`Ctrl-C` / `SIGTERM`). |

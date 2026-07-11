@@ -52,11 +52,15 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 
 	archResults := computeArchitecture(&facts, compute, opts)
 
+	// The dependency graph is cheap and feeds the structural Ca/Ce facts,
+	// so it is built regardless of the selected metrics.
+	graph := archdomain.BuildDependencyGraph(&facts, archdomain.Scope(opts.DependencyScope))
+
 	packageResults := make([]inbound.PackageResult, len(facts.Packages))
 	workers := workerpool.Workers(opts.Workers, len(facts.Packages))
 
 	err = workerpool.Run(ctx, workers, len(facts.Packages), func(i int) error {
-		packageResults[i] = analyzePackage(&facts, i, archResults, reusabilitySvc, display, compute, opts)
+		packageResults[i] = analyzePackage(&facts, i, graph.Couplings[i], archResults, reusabilitySvc, display, compute, opts)
 
 		return nil
 	})
@@ -107,6 +111,7 @@ func computeArchitecture(facts *tfdomain.ProjectFacts, compute map[string]bool, 
 func analyzePackage(
 	facts *tfdomain.ProjectFacts,
 	pkgID int,
+	coupling archdomain.Coupling,
 	archResults []architecture.Result,
 	reusabilitySvc *reusability.Service,
 	display, compute map[string]bool,
@@ -114,7 +119,12 @@ func analyzePackage(
 ) inbound.PackageResult {
 	pkg := &facts.Packages[pkgID]
 
-	result := inbound.PackageResult{Path: pkg.Path}
+	result := inbound.PackageResult{
+		Path:     pkg.Path,
+		Afferent: coupling.Afferent,
+		Efferent: coupling.Efferent,
+		Funcs:    pkg.FuncCount,
+	}
 	if archResults != nil {
 		result.Metrics = packageMetrics(archResults[pkgID], display)
 	}
@@ -182,7 +192,11 @@ func analyzeType(
 		)
 	}
 
-	typeResult := inbound.TypeResult{Name: t.Name}
+	typeResult := inbound.TypeResult{
+		Name:    t.Name,
+		Fields:  len(t.Fields),
+		Methods: len(t.Methods),
+	}
 
 	for _, name := range metrics.TypeMetricOrder() {
 		if !display[name] {

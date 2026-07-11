@@ -4,9 +4,12 @@
 //	go-modularity [flags] [patterns...]
 //	go-modularity ./...
 //	go-modularity ./... --format=json
+//	go-modularity --web ./...
 //	go-modularity ./internal/... --metrics=amc,lcom1,lcom96b,tcc
+//	go-modularity --help --web
 //
-// Logs go to stderr; the report goes to stdout or --output.
+// Logs go to stderr; the report goes to stdout or --output. --help --web
+// opens an illustrated guide to every reported metric in the browser.
 package main
 
 import (
@@ -17,6 +20,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -25,6 +29,7 @@ import (
 	reporting "github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/application"
 	reportingdomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/ports/outbound"
+	"github.com/mostafakhairy0305-dot/go-modularity/internal/infrastructure/browser"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/infrastructure/profiling"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/infrastructure/sinks"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/version"
@@ -40,10 +45,12 @@ func run(args []string) int {
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: go-modularity [flags] [patterns...]\n\n")
 		fs.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nFor an illustrated guide to every reported metric:\n  go-modularity --help --web\n")
 	}
 
 	var (
-		format          = fs.String("format", "text", "report format: text, json, or csv")
+		format          = fs.String("format", "text", "report format: text, json, csv, or web")
+		webReport       = fs.Bool("web", false, "shorthand for -format=web: write a self-contained HTML report and open it")
 		output          = fs.String("output", "", "write the report to this file instead of stdout")
 		explain         = fs.Bool("explain", false, "include reasons for n/a and dropped-component metrics in the text report")
 		metricList      = fs.String("metrics", "", "comma-separated metrics to report (default: all except cbo)")
@@ -60,6 +67,12 @@ func run(args []string) int {
 		verbose         = fs.Bool("verbose", false, "verbose logging to stderr")
 	)
 	if err := fs.Parse(args); err != nil {
+		// --help --web (either order) opens the metrics guide instead of
+		// failing; parsing aborts at --help, so the raw args are scanned.
+		if errors.Is(err, flag.ErrHelp) && wantsWebHelp(args) {
+			return runWebHelp()
+		}
+
 		return 2
 	}
 
@@ -76,9 +89,19 @@ func run(args []string) int {
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 
+	if *webReport {
+		if formatWasSet(fs) && *format != string(reportingdomain.FormatWeb) {
+			logger.Error("conflicting flags: -web implies -format=web", "format", *format)
+
+			return 2
+		}
+
+		*format = string(reportingdomain.FormatWeb)
+	}
+
 	reportFormat, ok := reportingdomain.ParseFormat(*format)
 	if !ok {
-		logger.Error("invalid format", "format", *format, "want", "text, json, or csv")
+		logger.Error("invalid format", "format", *format, "want", "text, json, csv, or web")
 
 		return 2
 	}
@@ -140,13 +163,21 @@ func run(args []string) int {
 		}
 	}
 
+	outputPath := *output
+
+	// A web report is unreadable on stdout: default it to a well-known file.
+	webToDefaultFile := outputPath == "" && reportFormat == reportingdomain.FormatWeb
+	if webToDefaultFile {
+		outputPath = defaultWebReportName
+	}
+
 	var sink outbound.Sink = sinks.StdoutSink{}
-	if *output != "" {
-		sink = sinks.FileSink{Path: *output}
+	if outputPath != "" {
+		sink = sinks.FileSink{Path: outputPath}
 	}
 
 	textOptions := reportingdomain.TextOptions{
-		Color:   *output == "" && os.Getenv("NO_COLOR") == "" && stdoutIsTerminal(),
+		Color:   outputPath == "" && os.Getenv("NO_COLOR") == "" && stdoutIsTerminal(),
 		Explain: *explain,
 	}
 	if err := reporting.Write(report, reportFormat, sink, textOptions); err != nil {
@@ -155,7 +186,102 @@ func run(args []string) int {
 		return 1
 	}
 
+	// Open the defaulted web report only when a human is watching; an
+	// explicit -output signals scripting, and pipes signal CI.
+	if webToDefaultFile {
+		logger.Info("report written", "path", outputPath)
+
+		if stdoutIsTerminal() {
+			if err := browser.Open(outputPath); err != nil {
+				logger.Warn("opening the report in a browser failed", "error", err)
+			}
+		}
+	}
+
 	return 0
+}
+
+// defaultWebReportName is where the web report lands when -output is unset.
+const defaultWebReportName = "modularity-report.html"
+
+// formatWasSet reports whether the -format flag was given explicitly.
+func formatWasSet(fs *flag.FlagSet) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == "format" })
+
+	return set
+}
+
+// wantsWebHelp reports whether the raw arguments request the web metrics
+// guide: a truthy -web / --web token before any "--" terminator. Raw args
+// are scanned because --help aborts flag parsing before -web is seen.
+func wantsWebHelp(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+
+		if arg == "-web" || arg == "--web" {
+			return true
+		}
+
+		value, found := strings.CutPrefix(arg, "-web=")
+		if !found {
+			value, found = strings.CutPrefix(arg, "--web=")
+		}
+
+		if found {
+			truthy, err := strconv.ParseBool(value)
+
+			return err == nil && truthy
+		}
+	}
+
+	return false
+}
+
+// runWebHelp writes the metrics guide to the OS temp dir and, when a human
+// is watching, opens it in the browser. The file is always written so
+// scripts and CI can read the logged path.
+func runWebHelp() int {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
+
+	path, err := writeHelpDocs()
+	if err != nil {
+		logger.Error("writing the metrics guide failed", "error", err)
+
+		return 1
+	}
+
+	logger.Info("metrics guide written", "path", path)
+
+	if stdoutIsTerminal() {
+		if err := browser.Open(path); err != nil {
+			logger.Warn("opening the metrics guide in a browser failed", "error", err)
+		}
+	}
+
+	return 0
+}
+
+// writeHelpDocs renders the metrics guide into a fresh temp file and
+// returns its path.
+func writeHelpDocs() (string, error) {
+	file, err := os.CreateTemp("", "go-modularity-help-*.html")
+	if err != nil {
+		return "", err
+	}
+
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+
+	if err := reporting.WriteDocs(sinks.FileSink{Path: path}, version.Version); err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
 
 // stdoutIsTerminal reports whether stdout is a character device, so ANSI

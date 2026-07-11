@@ -13,7 +13,7 @@ import (
 func TestParseFormat(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"text", "json", "csv"} {
+	for _, name := range []string{"text", "json", "csv", "web"} {
 		if f, ok := reporting.ParseFormat(name); !ok || string(f) != name {
 			t.Errorf("ParseFormat(%q) = %v,%v", name, f, ok)
 		}
