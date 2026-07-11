@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -117,6 +118,12 @@ func run(args []string) int {
 	report, err := gomodularity.Analyze(ctx, config)
 	if err != nil {
 		logger.Error("analysis failed", "error", err)
+
+		// A signal (Ctrl-C / SIGTERM) cancels the context; report it with
+		// the conventional 130 so CI can tell cancellation from failure.
+		if errors.Is(err, context.Canceled) {
+			return 130
+		}
 
 		return 1
 	}

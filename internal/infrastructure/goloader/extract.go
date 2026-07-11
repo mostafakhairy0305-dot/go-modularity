@@ -253,16 +253,19 @@ func methodFacts(
 		refs.addType(sig)
 	}
 
-	walkBody(pkg.TypesInfo, m.decl, fieldCount, fieldIndex, methodIndex, &facts)
+	walkBody(pkg.TypesInfo, m.decl, m.fn, fieldCount, fieldIndex, methodIndex, &facts)
 
 	return facts, methodDocInput{exported: m.fn.Exported(), documented: m.decl.Doc != nil}
 }
 
 // walkBody collects branch statistics, direct field usage, and sibling
-// method calls from one method body in a single AST pass.
+// method calls from one method body in a single AST pass. self is the
+// receiving method's own object, used to exclude self-recursion from the
+// sibling-call set.
 func walkBody(
 	info *types.Info,
 	decl *ast.FuncDecl,
+	self *types.Func,
 	fieldCount int,
 	fieldIndex map[*types.Var]int,
 	methodIndex map[*types.Func]int,
@@ -277,13 +280,13 @@ func walkBody(
 	}
 
 	siblings := make(map[int]bool)
-	self, hasSelf := methodIndex[info.Defs[decl.Name].(*types.Func)]
+	selfIdx, hasSelf := methodIndex[self]
 
 	ast.Inspect(decl.Body, func(n ast.Node) bool {
 		countBranch(n, &facts.Branches)
 
 		if sel, ok := n.(*ast.SelectorExpr); ok {
-			recordSelection(info, sel, fieldIndex, methodIndex, facts, siblings, self, hasSelf)
+			recordSelection(info, sel, fieldIndex, methodIndex, facts, siblings, selfIdx, hasSelf)
 		}
 
 		return true

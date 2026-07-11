@@ -148,7 +148,7 @@ func (m *MethodFacts) String() string {
 // complexity. The formula itself lives in the complexity feature.
 type BranchStats struct {
 	Ifs         int // if statements
-	Fors        int // for loops with a condition
+	Fors        int // for loops (all, including conditionless "for {}")
 	Ranges      int // range loops
 	Cases       int // non-default switch and type-switch cases
 	SelectComms int // select communication clauses (default excluded)

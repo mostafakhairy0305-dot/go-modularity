@@ -301,6 +301,29 @@ Metric dependencies:
 | `reusability` | `lcom96b`, `amc`, `cbo` |
 | `distance` | `abstractness`, `instability` |
 
+### Scope and Conventions
+
+A few metrics depend on which packages are in scope or fall back to a defined
+convention. Keep these in mind when comparing runs:
+
+- **`cbo` and `reusability` are scope-relative.** `cbo` counts only references
+  to types that are *part of the current analysis*. Analyzing a single package
+  (`./internal/foo`) yields lower `cbo` — and therefore a different
+  `reusability` — than analyzing the whole module (`./...`), because fewer types
+  are in scope. Compare `cbo`/`reusability` only across runs with the same
+  patterns and `-dependency-scope`.
+- **Isolated packages land in "distance = 1".** A package with no in-scope
+  dependencies either way (no analyzed importers and no in-scope imports) is
+  defined as `instability = 0` (maximally stable, with a reason note). For a
+  concrete package (`abstractness = 0`) that makes `distance = |0 + 0 − 1| = 1`.
+  A leaf `util` or a `main` analyzed on its own will therefore show the maximum
+  distance; this is a convention, not necessarily a design problem.
+- **Transitive field usage follows only direct sibling calls.**
+  `-field-usage=transitive` propagates a method's field usage through direct
+  `x.Method()` calls to sibling methods of the same type. Calls made through
+  method expressions (`T.Method`), interface values, or stored function values
+  are not followed, so transitive cohesion is a lower bound on true reachability.
+
 ## Common Examples
 
 Report only cohesion metrics:
@@ -346,3 +369,4 @@ go-modularity -cpu-profile=cpu.prof -memory-profile=heap.prof ./...
 | `0` | Success. |
 | `1` | Analysis, profiling, or report writing failed. |
 | `2` | Command-line usage error, such as an invalid flag or output format. |
+| `130` | The run was cancelled by a signal (`Ctrl-C` / `SIGTERM`). |
