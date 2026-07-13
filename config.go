@@ -131,9 +131,9 @@ type Config struct {
 	ReusabilityWeights ReusabilityWeights
 }
 
-// withDefaults returns a copy of the config with every empty knob replaced by
-// its documented default.
-func (c Config) withDefaults() Config {
+// configWithDefaults returns a copy of the config with every empty knob
+// replaced by its documented default.
+func configWithDefaults(c Config) Config {
 	if len(c.Patterns) == 0 {
 		c.Patterns = []string{"./..."}
 	}
@@ -157,8 +157,8 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-// validate checks a defaults-applied config.
-func (c Config) validate() error {
+// validateConfig checks a defaults-applied config.
+func validateConfig(c Config) error {
 	switch c.DependencyScope {
 	case DependencyScopeProject, DependencyScopeModule, DependencyScopeAll:
 	default:

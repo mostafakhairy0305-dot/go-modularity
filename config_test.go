@@ -7,7 +7,7 @@ import (
 )
 
 func TestWithDefaults(t *testing.T) {
-	cfg := Config{}.withDefaults()
+	cfg := configWithDefaults(Config{})
 	if len(cfg.Patterns) != 1 || cfg.Patterns[0] != "./..." {
 		t.Fatalf("patterns = %v", cfg.Patterns)
 	}
@@ -36,8 +36,8 @@ func TestWithDefaults(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	valid := Config{}.withDefaults()
-	err := valid.validate()
+	valid := configWithDefaults(Config{})
+	err := validateConfig(valid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestValidate(t *testing.T) {
 	bad := valid
 
 	bad.DependencyScope = "galaxy"
-	err = bad.validate()
+	err = validateConfig(bad)
 	if err == nil {
 		t.Fatal("invalid scope accepted")
 	}
@@ -53,7 +53,7 @@ func TestValidate(t *testing.T) {
 	bad = valid
 
 	bad.FieldUsageMode = "psychic"
-	err = bad.validate()
+	err = validateConfig(bad)
 	if err == nil {
 		t.Fatal("invalid field usage accepted")
 	}
@@ -61,7 +61,7 @@ func TestValidate(t *testing.T) {
 	bad = valid
 
 	bad.SelectedMetrics = []MetricName{"made-up"}
-	err = bad.validate()
+	err = validateConfig(bad)
 	if err == nil {
 		t.Fatal("unknown metric accepted")
 	}
@@ -69,7 +69,7 @@ func TestValidate(t *testing.T) {
 	bad = valid
 
 	bad.Patterns = []string{""}
-	err = bad.validate()
+	err = validateConfig(bad)
 	if err == nil {
 		t.Fatal("empty pattern accepted")
 	}
@@ -77,7 +77,7 @@ func TestValidate(t *testing.T) {
 	bad = valid
 
 	bad.ReusabilityWeights = ReusabilityWeights{Cohesion: -0.5, Coupling: 1}
-	err = bad.validate()
+	err = validateConfig(bad)
 	if err == nil {
 		t.Fatal("negative weight accepted")
 	}

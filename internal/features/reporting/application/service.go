@@ -206,7 +206,7 @@ func buildJSONReport(report gomodularity.Report) jsonReport {
 			Path:     pkg.Path,
 			Afferent: pkg.Afferent,
 			Efferent: pkg.Efferent,
-			Funcs:    pkg.Funcs,
+			Funcs:    pkg.ExportedFuncs + pkg.UnexportedFuncs,
 			Metrics:  orderedMetrics(pkg.Metrics),
 			Types:    make([]jsonType, len(pkg.Types)),
 		}

@@ -20,15 +20,19 @@ type StdoutSink struct{}
 
 // Open returns a buffered stdout stream.
 func (StdoutSink) Open() (io.WriteCloser, error) {
-	return stdoutStream{bufio.NewWriter(os.Stdout)}, nil
+	return stdoutStream{w: bufio.NewWriter(os.Stdout)}, nil
 }
 
-// stdoutStream buffers report output to standard output; Write is the
-// embedded buffered writer's.
-type stdoutStream struct{ *bufio.Writer }
+// stdoutStream buffers report output to standard output.
+type stdoutStream struct {
+	w *bufio.Writer
+}
+
+// Write buffers p for standard output.
+func (s stdoutStream) Write(p []byte) (int, error) { return s.w.Write(p) }
 
 // Close flushes buffered output without closing stdout.
-func (s stdoutStream) Close() error { return s.Flush() }
+func (s stdoutStream) Close() error { return s.w.Flush() }
 
 // FileSink writes the report to a file, truncating any existing content.
 type FileSink struct {

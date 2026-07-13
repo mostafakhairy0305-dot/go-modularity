@@ -116,6 +116,11 @@ tasks:
     desc: Run Go tests and report coverage per function
     cmds:
       - go test -covermode=atomic -coverprofile=coverage.out ./...
+  check:
+    run: once
+    desc: Enforce the modularity policy (.modularity.yml); exits 3 on violations
+    cmds:
+      - go run ./cmd/go-modularity --check ./...
   ci:
     run: once
     desc: Run CI checks

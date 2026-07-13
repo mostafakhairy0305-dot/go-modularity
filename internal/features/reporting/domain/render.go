@@ -398,12 +398,7 @@ func (t *textTable) emitNode(node *treeNode, prefix, connector string) {
 	t.nodeRow(node, prefix+connector)
 
 	childPrefix := childIndent(prefix, connector)
-
-	var typeCount int
-	if node.pkg != nil && len(t.typeCols) > 0 {
-		typeCount = len(node.pkg.Types)
-	}
-
+	typeCount := nodeTypeCount(node, t.typeCols)
 	total := typeCount + len(node.children)
 
 	for i := range typeCount {
@@ -417,6 +412,16 @@ func (t *textTable) emitNode(node *treeNode, prefix, connector string) {
 
 		t.emitNode(child, childPrefix, branchGlyph(typeCount+i, total))
 	}
+}
+
+// nodeTypeCount is the number of type rows a node contributes: its package's
+// types when any type column is displayed, otherwise none.
+func nodeTypeCount(node *treeNode, typeCols []string) int {
+	if node.pkg != nil && len(typeCols) > 0 {
+		return len(node.pkg.Types)
+	}
+
+	return 0
 }
 
 // branchGlyph is the tree connector for the child at index of total: the
@@ -448,66 +453,96 @@ func childIndent(prefix, connector string) string {
 func (t *textTable) nodeRow(node *treeNode, label string) {
 	row := make([]tableCell, 0, 1+len(t.pkgCols)+len(t.typeCols))
 	row = append(row, tableCell{prefix: label, text: node.name, style: ansiBold})
-
-	if node.pkg != nil {
-		row = append(row, packageMetricCells(node.pkg, t.pkgCols)...)
-	} else {
-		for _, name := range t.pkgCols {
-			row = append(row, meanCell(node.pkgAgg[name], boundedColorFor(name)))
-		}
-	}
-
-	if node.typesTotal > 0 {
-		for _, name := range t.typeCols {
-			st := node.typeAgg[name]
-			row = append(row, meanCell(st, func(v float64) string { return valueColor(name, v, st) }))
-		}
-	}
+	row = append(row, nodePkgCells(node, t.pkgCols)...)
+	row = append(row, nodeTypeAggCells(node, t.typeCols)...)
 
 	t.rows = append(t.rows, row)
+}
+
+// nodePkgCells renders a node's package columns: the package's own metric
+// values, or the mean over the contained packages for a directory node.
+func nodePkgCells(node *treeNode, pkgCols []string) []tableCell {
+	if node.pkg != nil {
+		return packageMetricCells(node.pkg, pkgCols)
+	}
+
+	cells := make([]tableCell, 0, len(pkgCols))
+	for _, name := range pkgCols {
+		cells = append(cells, meanCell(node.pkgAgg[name], boundedColorFor(name)))
+	}
+
+	return cells
+}
+
+// nodeTypeAggCells renders a node's type columns as the means over all types
+// in its subtree; empty when the subtree holds no types.
+func nodeTypeAggCells(node *treeNode, typeCols []string) []tableCell {
+	if node.typesTotal == 0 {
+		return nil
+	}
+
+	cells := make([]tableCell, 0, len(typeCols))
+	for _, name := range typeCols {
+		st := node.typeAgg[name]
+		cells = append(cells, meanCell(st, func(v float64) string { return valueColor(name, v, st) }))
+	}
+
+	return cells
 }
 
 // typeRow appends one type's branch row with its metric values, colored
 // against the subtree's column ranges.
 func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string) {
 	typ := &node.pkg.Types[index]
-
-	byName := make(map[string]metrics.MetricResult, len(typ.Metrics))
-	for _, r := range typ.Metrics {
-		byName[r.Name] = r
-	}
+	byName := metricsByName(typ.Metrics)
 
 	row := make([]tableCell, 0, 1+len(t.pkgCols)+len(t.typeCols))
-
 	row = append(row, tableCell{prefix: prefix + connector, text: typ.Name})
+
 	for range t.pkgCols {
 		row = append(row, tableCell{})
 	}
 
-	for _, name := range t.typeCols {
+	row = append(row, typeMetricCells(byName, t.typeCols, node)...)
+
+	t.rows = append(t.rows, row)
+}
+
+// typeMetricCells renders one type's metric columns, coloring each applicable
+// value against the subtree's column range and marking the rest n/a.
+func typeMetricCells(byName map[string]metrics.MetricResult, typeCols []string, node *treeNode) []tableCell {
+	cells := make([]tableCell, 0, len(typeCols))
+	for _, name := range typeCols {
 		r, ok := byName[name]
 		if !ok || !r.Applicable {
-			row = append(row, naTableCell())
+			cells = append(cells, naTableCell())
 
 			continue
 		}
 
-		row = append(row, tableCell{
+		cells = append(cells, tableCell{
 			text:  formatCell(r.Value),
 			style: valueColor(name, r.Value, node.typeAgg[name]),
 		})
 	}
 
-	t.rows = append(t.rows, row)
+	return cells
+}
+
+// metricsByName indexes metric results by their metric name.
+func metricsByName(results []metrics.MetricResult) map[string]metrics.MetricResult {
+	byName := make(map[string]metrics.MetricResult, len(results))
+	for _, r := range results {
+		byName[r.Name] = r
+	}
+
+	return byName
 }
 
 // packageMetricCells renders a package row's own metric values in column
 // order; blank cells fill metrics absent from the display set.
 func packageMetricCells(pkg *gomodularity.PackageReport, cols []string) []tableCell {
-	byName := make(map[string]metrics.MetricResult, len(pkg.Metrics))
-	for _, r := range pkg.Metrics {
-		byName[r.Name] = r
-	}
+	byName := metricsByName(pkg.Metrics)
 
 	cells := make([]tableCell, 0, len(cols))
 	for _, name := range cols {

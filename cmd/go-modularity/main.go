@@ -26,6 +26,7 @@ import (
 	"time"
 
 	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
 	reporting "github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/application"
 	reportingdomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/ports/outbound"
@@ -65,7 +66,14 @@ func run(args []string) int {
 		memoryProfile   = fs.String("memory-profile", "", "write a memory profile to this file")
 		showVersion     = fs.Bool("version", false, "print the version and exit")
 		verbose         = fs.Bool("verbose", false, "verbose logging to stderr")
+		check           = fs.Bool("check", false, "enforce a modularity policy and exit 3 on violations")
+		configPath      = fs.String("config", "", "policy config file (implies -check; default: auto-discover .modularity.yml)")
 	)
+
+	var maxOverrides, minOverrides overrideList
+
+	fs.Var(&maxOverrides, "max", "policy upper-bound override key=value (repeatable; metric keys may be scoped as type.amc/package.distance; implies -check)")
+	fs.Var(&minOverrides, "min", "policy lower-bound override key=value (repeatable; metric keys may be scoped as type.reusability; implies -check)")
 	if err := fs.Parse(args); err != nil {
 		// --help --web (either order) opens the metrics guide instead of
 		// failing; parsing aborts at --help, so the raw args are scanned.
@@ -87,7 +95,7 @@ func run(args []string) int {
 		level = slog.LevelDebug
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+	logger := newLogger(level)
 
 	if *webReport {
 		if formatWasSet(fs) && *format != string(reportingdomain.FormatWeb) {
@@ -124,6 +132,32 @@ func run(args []string) int {
 		}()
 	}
 
+	// A policy gate runs only when explicitly requested: -check, an explicit
+	// -config, or any -max / -min override. Resolving it up front lets gated
+	// metrics join the display set so they are computed and rendered.
+	gating := *check || *configPath != "" || len(maxOverrides.items) > 0 || len(minOverrides.items) > 0
+
+	var (
+		policy       policydomain.Policy
+		policySource string
+	)
+
+	if gating {
+		resolved, source, err := resolvePolicy(*configPath, maxOverrides, minOverrides)
+		if err != nil {
+			logger.Error("policy configuration failed", "error", err)
+
+			return 2
+		}
+
+		policy, policySource = resolved, source
+	}
+
+	selectedMetrics := parseMetrics(*metricList)
+	if gating {
+		selectedMetrics = gatedMetrics(selectedMetrics, policy)
+	}
+
 	config := gomodularity.Config{
 		Patterns:         fs.Args(),
 		IncludeTests:     *includeTests,
@@ -132,7 +166,7 @@ func run(args []string) int {
 		Workers:          *workers,
 		DependencyScope:  gomodularity.DependencyScope(*dependencyScope),
 		FieldUsageMode:   gomodularity.FieldUsageMode(*fieldUsage),
-		SelectedMetrics:  parseMetrics(*metricList),
+		SelectedMetrics:  selectedMetrics,
 		ContinueOnError:  *continueOnError,
 	}
 
@@ -198,7 +232,41 @@ func run(args []string) int {
 		}
 	}
 
+	// The report is on stdout; the violation summary goes to stderr so pipes
+	// and CI stay clean, and a distinct exit code lets CI gate on it. Both
+	// outcomes name the policy source so a run is never a silent no-op.
+	if gating {
+		violations := policydomain.Evaluate(report, policy)
+		if len(violations) > 0 {
+			logger.Error("policy check failed", "source", policySource, "violations", len(violations))
+			fmt.Fprint(os.Stderr, policydomain.FormatViolations(violations))
+
+			return 3
+		}
+
+		logger.Info("policy check passed", "source", policySource)
+	}
+
 	return 0
+}
+
+// newLogger builds the CLI's stderr logger. It drops slog's time and level
+// attributes so status lines read as plain "msg key=value" text: a timestamp
+// and a severity level are noise for an interactive CLI whose exit code
+// already signals success or failure. A nil level selects the default (info).
+func newLogger(level slog.Leveler) *slog.Logger {
+	opts := &slog.HandlerOptions{
+		Level: level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if len(groups) == 0 && (a.Key == slog.TimeKey || a.Key == slog.LevelKey) {
+				return slog.Attr{}
+			}
+
+			return a
+		},
+	}
+
+	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
 
 // defaultWebReportName is where the web report lands when -output is unset.
@@ -244,7 +312,7 @@ func wantsWebHelp(args []string) bool {
 // is watching, opens it in the browser. The file is always written so
 // scripts and CI can read the logged path.
 func runWebHelp() int {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
+	logger := newLogger(nil)
 
 	path, err := writeHelpDocs()
 	if err != nil {

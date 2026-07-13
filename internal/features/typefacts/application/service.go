@@ -65,12 +65,13 @@ func Assemble(modulePath string, extracts []domain.PackageExtract) domain.Projec
 
 	for pkgID, extract := range extracts {
 		pkg := domain.PackageFacts{
-			ID:        pkgID,
-			Path:      extract.Path,
-			InModule:  extract.InModule,
-			Imports:   sortedUnique(extract.Imports, extract.Path),
-			FuncCount: extract.FuncCount,
-			TypeIDs:   make([]int, 0, len(extract.Types)),
+			ID:                  pkgID,
+			Path:                extract.Path,
+			InModule:            extract.InModule,
+			Imports:             sortedUnique(extract.Imports, extract.Path),
+			ExportedFuncCount:   extract.ExportedFuncCount,
+			UnexportedFuncCount: extract.UnexportedFuncCount,
+			TypeIDs:             make([]int, 0, len(extract.Types)),
 		}
 		for _, t := range extract.Types {
 			// IDs were assigned in this same iteration order above, so a

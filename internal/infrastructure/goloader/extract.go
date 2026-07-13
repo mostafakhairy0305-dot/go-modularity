@@ -33,11 +33,14 @@ type docRange struct {
 func extractPackage(pkg *packages.Package, opts extractorOptions) domain.PackageExtract {
 	generated, funcDecls, typeDocs, fieldDocs := indexSyntax(pkg)
 
+	exported, unexported := countFuncDecls(pkg, opts.includeGenerated, generated)
+
 	out := domain.PackageExtract{
-		Path:      pkg.PkgPath,
-		InModule:  inModule(pkg, opts.modulePath),
-		Imports:   importPaths(pkg),
-		FuncCount: countFuncDecls(pkg, opts.includeGenerated, generated),
+		Path:                pkg.PkgPath,
+		InModule:            inModule(pkg, opts.modulePath),
+		Imports:             importPaths(pkg),
+		ExportedFuncCount:   exported,
+		UnexportedFuncCount: unexported,
 	}
 
 	scope := pkg.Types.Scope()
@@ -64,23 +67,29 @@ func extractPackage(pkg *packages.Package, opts extractorOptions) domain.Package
 }
 
 // countFuncDecls counts the package's declared functions and methods in
-// non-excluded files.
-func countFuncDecls(pkg *packages.Package, includeGenerated bool, generated map[string]bool) int {
-	count := 0
-
+// non-excluded files, split by whether the declared name is exported. A
+// method's export status follows its own name, not its receiver's.
+func countFuncDecls(pkg *packages.Package, includeGenerated bool, generated map[string]bool) (exported, unexported int) {
 	for _, file := range pkg.Syntax {
 		if !includeGenerated && generated[pkg.Fset.Position(file.Package).Filename] {
 			continue
 		}
 
 		for _, decl := range file.Decls {
-			if _, ok := decl.(*ast.FuncDecl); ok {
-				count++
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+
+			if fn.Name.IsExported() {
+				exported++
+			} else {
+				unexported++
 			}
 		}
 	}
 
-	return count
+	return exported, unexported
 }
 
 // indexSyntax walks the ASTs once, recording generated files, method
@@ -517,7 +526,7 @@ func paramTypeKeys(sig *types.Signature) []string {
 
 	seen := make(map[string]bool, params.Len())
 	for v := range params.Variables() {
-		seen[types.TypeString(v.Type(), fullPathQualifier)] = true
+		seen[types.TypeString(v.Type(), (*types.Package).Path)] = true
 	}
 
 	keys := make([]string, 0, len(seen))
@@ -529,8 +538,6 @@ func paramTypeKeys(sig *types.Signature) []string {
 
 	return keys
 }
-
-func fullPathQualifier(p *types.Package) string { return p.Path() }
 
 // refCollector accumulates the CBO fact: the distinct other analyzed named
 // types a type references through fields, method parameters, method
@@ -564,10 +571,21 @@ func (r *refCollector) addType(t types.Type) {
 
 	r.visited[t] = true
 
+	if named, ok := t.(*types.Named); ok {
+		recordNamedRef(r.seen, r.self, r.analyzed, named)
+		addTypeArgRefs(r, named)
+
+		return
+	}
+
+	descendRef(r, t)
+}
+
+// descendRef records references reachable through t's container structure
+// (pointers, maps, function types, anonymous structs and interfaces),
+// recursing through r.addType so the visited guard short-circuits cycles.
+func descendRef(r *refCollector, t types.Type) {
 	switch t := t.(type) {
-	case *types.Named:
-		recordNamedRef(r.seen, r.self, r.analyzed, t)
-		addTypeArgRefs(r, t)
 	case *types.Map:
 		r.addType(t.Key())
 		r.addType(t.Elem())

@@ -12,8 +12,8 @@ import (
 // the configured patterns, and returns a deterministic report. The context
 // cancels package loading and metric computation.
 func Analyze(ctx context.Context, config Config) (Report, error) {
-	cfg := config.withDefaults()
-	if err := cfg.validate(); err != nil {
+	cfg := configWithDefaults(config)
+	if err := validateConfig(cfg); err != nil {
 		return Report{}, err
 	}
 
@@ -47,12 +47,13 @@ func Analyze(ctx context.Context, config Config) (Report, error) {
 	}
 	for i, pkg := range result.Packages {
 		out := PackageReport{
-			Path:     pkg.Path,
-			Afferent: pkg.Afferent,
-			Efferent: pkg.Efferent,
-			Funcs:    pkg.Funcs,
-			Metrics:  pkg.Metrics,
-			Types:    make([]TypeReport, len(pkg.Types)),
+			Path:            pkg.Path,
+			Afferent:        pkg.Afferent,
+			Efferent:        pkg.Efferent,
+			ExportedFuncs:   pkg.ExportedFuncs,
+			UnexportedFuncs: pkg.UnexportedFuncs,
+			Metrics:         pkg.Metrics,
+			Types:           make([]TypeReport, len(pkg.Types)),
 		}
 		for j, t := range pkg.Types {
 			out.Types[j] = TypeReport{

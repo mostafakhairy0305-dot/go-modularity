@@ -99,6 +99,10 @@ go-modularity -format=json ./...
 | `-memory-profile` | Write a heap profile after analysis completes. | off | `go-modularity -memory-profile=heap.prof ./...` |
 | `-verbose` | Enable debug logging to stderr. | `false` | `go-modularity -verbose ./...` |
 | `-version` | Print the version and exit. | off | `go-modularity -version` |
+| `-check` | Enforce a modularity policy (see [Policy Checks](#policy-checks)). Loads `.modularity.yml` if present, otherwise the recommended defaults. Any violation exits `3`. | `false` | `go-modularity -check ./...` |
+| `-config` | Path to a policy config file. Implies `-check` and skips auto-discovery. | auto-discover `.modularity.yml` | `go-modularity -config=policy.yml ./...` |
+| `-max` | Set an upper-bound condition `key=value`; repeatable. `key` is a structural field, metric name, or scoped metric key such as `type.amc` or `package.distance`. Implies `-check`. | none | `go-modularity -max=type.amc=5 ./...` |
+| `-min` | Set a lower-bound condition `key=value`; repeatable. Implies `-check`. | none | `go-modularity -min=type.reusability=0.5 ./...` |
 
 Terminal text output uses color only when stdout is a terminal. Set `NO_COLOR=1`
 to disable color:
@@ -378,6 +382,138 @@ convention. Keep these in mind when comparing runs:
   method expressions (`T.Method`), interface values, or stored function values
   are not followed, so transitive cohesion is a lower bound on true reachability.
 
+## Policy Checks
+
+`go-modularity` can **fail** a run when a package or type crosses a threshold,
+so the same metrics that inform a review can gate a CI pipeline. A policy is a
+set of **conditions** — budgets on structural facts and bounds on metrics —
+evaluated against the report. Any violation prints a summary to stderr and
+exits `3`; the report itself still goes to stdout.
+
+Policy checks are **opt-in**. A committed `.modularity.yml` does nothing on its
+own; a check runs only when you pass a policy flag:
+
+```sh
+go-modularity -check ./...                  # .modularity.yml if present, else defaults
+go-modularity -config=policy.yml ./...      # an explicit file (implies -check)
+go-modularity -check -max=type.amc=5 ./...   # defaults, with one bound overridden
+```
+
+The effective policy is layered, later winning: **recommended defaults → config
+file → `-max`/`-min` flags**. Gated metrics are added to the display set
+automatically, so a metric you gate on is always computed and shown. A
+condition on a metric is skipped wherever that metric is not applicable (for
+example `tcc` on a one-method type), so n/a cells never fail a build.
+
+Every check logs its outcome and the policy it used to stderr, so a run is never
+a silent no-op — for example `policy check passed source=.modularity.yml` or
+`policy check failed source="recommended defaults" violations=15`. A discovered
+`.modularity.yml` (like this repository's) is what `-check` uses unless you pass
+`-config`, so the log line tells you whether the defaults or a file were
+applied.
+
+### Conditions
+
+Every field can carry a `max`, a `min`, or both. Structural budgets are
+per-package or per-type counts; metric bounds follow each metric's good/bad
+direction. CLI overrides can use bare legacy metric keys (`amc`) or scoped keys
+(`type.amc`, `package.distance`); scoped keys are preferred because they match
+the report's package/type split.
+
+| Key | Scope | Typical bound | Caps |
+| --- | --- | --- | --- |
+| `types` | package | `max` | named types per package |
+| `exported_funcs` | package | `max` | exported functions and methods per package |
+| `unexported_funcs` | package | `max` | unexported functions and methods per package |
+| `afferent` | package | `max` | incoming coupling, `Ca` |
+| `efferent` | package | `max` | outgoing coupling, `Ce` |
+| `fields` | type | `max` | struct fields per type |
+| `methods` | type | `max` | declared methods per type |
+| `amc` | type | `max` | average method complexity |
+| `lcom1` | type | `max` | non-cohesive method pairs |
+| `lcom96b` | type | `max` | lack of cohesion `0..1` |
+| `camc` | type | `min` | cohesion among parameter types |
+| `tcc` | type | `min` | tight class cohesion |
+| `cbo` | type | `max` | coupling between objects |
+| `reusability` | type | `min` | composite reusability index |
+| `abstractness` | package | either | interface ratio (no default) |
+| `instability` | package | either | `Ce / (Ca + Ce)` (no default) |
+| `distance` | package | `max` | distance from the main sequence |
+
+### `.modularity.yml`
+
+The file mirrors these keys. Each field takes a `max`, a `min`, or both; a bare
+number is shorthand for `max`. Unknown keys and unsupported versions are errors,
+so a typo fails fast rather than silently disabling a check.
+
+```yaml
+---
+version: 1
+
+package:
+  types:
+    max: 12
+  exported_funcs:
+    max: 12
+  unexported_funcs:
+    max: 18
+  efferent:
+    max: 10
+  metrics:
+    distance:
+      max: 0.5
+
+type:
+  fields:
+    max: 8
+  methods:
+    max: 10
+  metrics:
+    amc:
+      max: 3
+    lcom1:
+      max: 10
+    lcom96b:
+      max: 0.5
+    camc:
+      min: 0.5
+    tcc:
+      min: 0.5
+    cbo:
+      max: 6
+    reusability:
+      min: 0.7
+```
+
+For backward compatibility, a top-level `metrics:` map is still accepted as a
+legacy/global form and applies to whichever scope emits that metric. New config
+files should prefer `package.metrics` and `type.metrics`, which also lets the
+loader reject a type-only metric under the package section.
+
+### Recommended defaults
+
+`-check` with no config file applies the strict recommended baseline (the
+block above). It gates the robust, low-false-positive fields and follows each
+metric's direction: lower-is-better metrics take a `max`, higher-is-better
+metrics take a `min`. `abstractness` and `instability` have no universal good
+direction and `afferent` is context dependent, so they are left unconstrained —
+opt into them explicitly. `distance` is included but note that isolated
+packages (a lone `main` or leaf `util`) sit at `distance = 1` by convention;
+loosen or drop it if your analysis scope makes that common.
+
+The repository ships a `.modularity.yml` tuned to pass its own code as a
+working, fully commented template.
+
+### In CI
+
+```sh
+# Fails the job (exit 3) on any policy violation.
+go-modularity -check ./...
+
+# Save the machine-readable report and still gate.
+go-modularity -check -format=json -output=modularity.json ./...
+```
+
 ## Common Examples
 
 Report only cohesion metrics:
@@ -416,6 +552,12 @@ Run in CI and save machine-readable output:
 go-modularity -format=json -output=modularity-report.json -continue-on-error ./...
 ```
 
+Gate CI on a modularity policy (exit `3` on violations):
+
+```sh
+go-modularity -check ./...
+```
+
 Profile the analyzer itself:
 
 ```sh
@@ -426,7 +568,8 @@ go-modularity -cpu-profile=cpu.prof -memory-profile=heap.prof ./...
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Success. |
+| `0` | Success. With `-check`, the report also satisfied every policy condition. |
 | `1` | Analysis, profiling, or report writing failed. |
-| `2` | Command-line usage error, such as an invalid flag or output format. Plain `--help` exits `2`; `--help --web` writes the metrics guide and exits `0`. |
+| `2` | Command-line usage error, such as an invalid flag, output format, or policy configuration. Plain `--help` exits `2`; `--help --web` writes the metrics guide and exits `0`. |
+| `3` | Policy violations were found (`-check`). The report is on stdout; the violation summary is on stderr. |
 | `130` | The run was cancelled by a signal (`Ctrl-C` / `SIGTERM`). |

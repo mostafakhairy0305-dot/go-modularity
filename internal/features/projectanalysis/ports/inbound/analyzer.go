@@ -55,8 +55,12 @@ type PackageResult struct {
 	Afferent int
 	// Efferent counts this package's in-scope imports (Ce).
 	Efferent int
-	// Funcs counts the package's declared functions and methods.
-	Funcs int
+	// ExportedFuncs counts the package's declared functions and methods with
+	// an exported name.
+	ExportedFuncs int
+	// UnexportedFuncs counts the package's declared functions and methods with
+	// an unexported name.
+	UnexportedFuncs int
 	// Metrics holds the package's display metrics in the fixed order.
 	Metrics []metrics.MetricResult
 	// Types are the package's analyzed types, sorted by name.

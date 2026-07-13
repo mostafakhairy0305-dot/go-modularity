@@ -46,21 +46,33 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 		return inbound.Result{}, err
 	}
 
+	return assembleResult(ctx, &facts, reusabilitySvc, display, compute, opts)
+}
+
+// assembleResult computes the architecture metrics and every package's results
+// in parallel, honouring cancellation, and folds them into the final report.
+func assembleResult(
+	ctx context.Context,
+	facts *tfdomain.ProjectFacts,
+	reusabilitySvc *reusability.Service,
+	display, compute map[string]bool,
+	opts inbound.Options,
+) (inbound.Result, error) {
 	if err := ctx.Err(); err != nil {
 		return inbound.Result{}, err
 	}
 
-	archResults := computeArchitecture(&facts, compute, opts)
+	archResults := computeArchitecture(facts, compute, opts)
 
 	// The dependency graph is cheap and feeds the structural Ca/Ce facts,
 	// so it is built regardless of the selected metrics.
-	graph := archdomain.BuildDependencyGraph(&facts, archdomain.Scope(opts.DependencyScope))
+	graph := archdomain.BuildDependencyGraph(facts, archdomain.Scope(opts.DependencyScope))
 
 	packageResults := make([]inbound.PackageResult, len(facts.Packages))
 	workers := workerpool.Workers(opts.Workers, len(facts.Packages))
 
-	err = workerpool.Run(ctx, workers, len(facts.Packages), func(i int) error {
-		packageResults[i] = analyzePackage(&facts, i, graph.Couplings[i], archResults, reusabilitySvc, display, compute, opts)
+	err := workerpool.Run(ctx, workers, len(facts.Packages), func(i int) error {
+		packageResults[i] = analyzePackage(facts, i, graph.Couplings[i], archResults, reusabilitySvc, display, compute, opts)
 
 		return nil
 	})
@@ -120,10 +132,11 @@ func analyzePackage(
 	pkg := &facts.Packages[pkgID]
 
 	result := inbound.PackageResult{
-		Path:     pkg.Path,
-		Afferent: coupling.Afferent,
-		Efferent: coupling.Efferent,
-		Funcs:    pkg.FuncCount,
+		Path:            pkg.Path,
+		Afferent:        coupling.Afferent,
+		Efferent:        coupling.Efferent,
+		ExportedFuncs:   pkg.ExportedFuncCount,
+		UnexportedFuncs: pkg.UnexportedFuncCount,
 	}
 	if archResults != nil {
 		result.Metrics = packageMetrics(archResults[pkgID], display)

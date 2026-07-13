@@ -166,3 +166,72 @@ func TestRunHelpWithoutWeb(t *testing.T) {
 		t.Fatalf("--help exit = %d, want 2", code)
 	}
 }
+
+// chdirFixture switches into the sample module used by the policy-gate tests.
+// (Not parallel — it changes the working directory.)
+func chdirFixture(t *testing.T) {
+	t.Helper()
+
+	fixture, err := filepath.Abs(filepath.Join("..", "..", "testdata", "fixture"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Chdir(fixture)
+}
+
+// Black-box: a violated condition exits 3. `types` max 0 is broken by any
+// package that declares a type, so this does not depend on fixture metrics.
+func TestRunCheckFailsExitsThree(t *testing.T) {
+	chdirFixture(t)
+
+	if code := main.Run([]string{"--max", "types=0", "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."}); code != 3 {
+		t.Fatalf("exit code = %d, want 3", code)
+	}
+}
+
+// Black-box: a satisfiable config passes with exit 0, exercising -config and
+// every field of the schema at once.
+func TestRunCheckConfigPasses(t *testing.T) {
+	chdirFixture(t)
+
+	config := filepath.Join(t.TempDir(), "policy.yml")
+	lenient := `
+version: 1
+package: { types: 100000, exported_funcs: 100000, unexported_funcs: 100000, afferent: 100000, efferent: 100000 }
+type: { fields: 100000, methods: 100000 }
+metrics:
+  amc: 100000
+  lcom1: 100000
+  lcom96b: 1
+  camc: { min: 0 }
+  tcc: { min: 0 }
+  cbo: 100000
+  reusability: { min: 0 }
+  distance: 1
+`
+	if err := os.WriteFile(config, []byte(lenient), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if code := main.Run([]string{"--config", config, "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."}); code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+}
+
+// Black-box: an unknown override key is a usage error (exit 2), and gating
+// never runs without a policy flag.
+func TestRunCheckKeyAndTriggers(t *testing.T) {
+	chdirFixture(t)
+
+	out := filepath.Join(t.TempDir(), "r.txt")
+
+	if code := main.Run([]string{"--max", "bogus=5", "--output", out, "./..."}); code != 2 {
+		t.Fatalf("unknown key exit = %d, want 2", code)
+	}
+
+	// No policy flag → no gate, even though types=0 would fail under one.
+	if code := main.Run([]string{"--output", out, "./..."}); code != 0 {
+		t.Fatalf("ungated exit = %d, want 0", code)
+	}
+}
