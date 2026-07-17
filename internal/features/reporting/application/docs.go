@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/ports/outbound"
 )

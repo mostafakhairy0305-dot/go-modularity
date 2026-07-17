@@ -1,5 +1,7 @@
 // Command go-modularity computes type-level and package-level modularity
 // metrics for a Go module.
+//
+//	go-modularity [flags] [patterns...]
 package main
 
 import (

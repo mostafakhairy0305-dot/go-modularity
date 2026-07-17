@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 )
 
 // Comparator identifies which bound a violation crossed.

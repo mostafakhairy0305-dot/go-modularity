@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 )
 
 const epsilon = 1e-12
@@ -28,7 +28,7 @@ func analyzeFixture(t *testing.T, mutate func(*gomodularity.Config)) gomodularit
 	if mutate == nil {
 		defaultOnce.Do(func() {
 			defaultReport, defaultErr = gomodularity.Analyze(
-				context.Background(), gomodularity.Config{Directory: "testdata/fixture"},
+				context.Background(), gomodularity.Config{Directory: "../testdata/fixture"},
 			)
 		})
 
@@ -39,7 +39,7 @@ func analyzeFixture(t *testing.T, mutate func(*gomodularity.Config)) gomodularit
 		return defaultReport
 	}
 
-	cfg := gomodularity.Config{Directory: "testdata/fixture"}
+	cfg := gomodularity.Config{Directory: "../testdata/fixture"}
 	mutate(&cfg)
 
 	report, err := gomodularity.Analyze(context.Background(), cfg)
@@ -296,7 +296,7 @@ func TestAnalyzeDeterminism(t *testing.T) {
 
 func TestAnalyzeInvalidConfig(t *testing.T) {
 	ctx := context.Background()
-	base := gomodularity.Config{Directory: "testdata/fixture"}
+	base := gomodularity.Config{Directory: "../testdata/fixture"}
 
 	bad := base
 
@@ -326,7 +326,7 @@ func TestAnalyzeCancelledContext(t *testing.T) {
 
 	if _, err := gomodularity.Analyze(
 		ctx,
-		gomodularity.Config{Directory: "testdata/fixture"},
+		gomodularity.Config{Directory: "../testdata/fixture"},
 	); err == nil {
 		t.Fatal("cancelled context accepted")
 	}

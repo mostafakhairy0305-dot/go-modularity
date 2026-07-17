@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 )
 
 // webTemplate is the self-contained HTML page: inline CSS and vanilla JS,

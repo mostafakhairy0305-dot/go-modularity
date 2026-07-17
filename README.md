@@ -57,7 +57,7 @@ Requires Go 1.26.5 or newer.
 Install from the module path:
 
 ```sh
-go install github.com/mostafakhairy0305-dot/go-modularity/cmd/go-modularity@latest
+go install github.com/mostafakhairy0305-dot/go-modularity@latest
 ```
 
 Install from a local checkout:
@@ -65,13 +65,13 @@ Install from a local checkout:
 ```sh
 git clone https://github.com/mostafakhairy0305-dot/go-modularity.git
 cd go-modularity
-go install ./cmd/go-modularity
+go install .
 ```
 
 Build a local binary without installing it:
 
 ```sh
-go build -o ./bin/go-modularity ./cmd/go-modularity
+go build -o ./bin/go-modularity .
 ```
 
 Verify the binary:

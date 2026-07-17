@@ -1,4 +1,4 @@
-package main_test
+package cli_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	main "github.com/mostafakhairy0305-dot/go-modularity/cmd/go-modularity"
+	"github.com/mostafakhairy0305-dot/go-modularity/internal/cli"
 )
 
 // Black-box: the CLI analyzes the fixture and writes a valid JSON report to
@@ -24,7 +24,7 @@ func TestRunFixtureJSON(t *testing.T) {
 	memoryProfile := filepath.Join(tmp, "memory.prof")
 	t.Chdir(fixture)
 
-	if code := main.Run([]string{
+	if code := cli.Run([]string{
 		"--format=json",
 		"--output=" + out,
 		"--cpu-profile=" + cpuProfile,
@@ -88,7 +88,7 @@ func TestRunFixtureWeb(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "report.html")
 	t.Chdir(fixture)
 
-	if code := main.Run([]string{"--web", "--output=" + out, "./..."}); code != 0 {
+	if code := cli.Run([]string{"--web", "--output=" + out, "./..."}); code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 
@@ -112,7 +112,7 @@ func TestRunFixtureWeb(t *testing.T) {
 func TestRunWebFormatConflict(t *testing.T) {
 	t.Parallel()
 
-	if code := main.Run([]string{"--web", "--format=json"}); code != 2 {
+	if code := cli.Run([]string{"--web", "--format=json"}); code != 2 {
 		t.Fatalf("exit code = %d, want 2", code)
 	}
 }
@@ -121,7 +121,7 @@ func TestRunWebFormatConflict(t *testing.T) {
 func TestRunVersion(t *testing.T) {
 	t.Parallel()
 
-	if code := main.Run([]string{"--version"}); code != 0 {
+	if code := cli.Run([]string{"--version"}); code != 0 {
 		t.Fatalf("--version exit = %d, want 0", code)
 	}
 }
@@ -141,7 +141,7 @@ func TestRunHelpWeb(t *testing.T) {
 			t.Setenv("TMPDIR", tmp) // darwin/linux
 			t.Setenv("TMP", tmp)    // windows
 
-			if code := main.Run(args); code != 0 {
+			if code := cli.Run(args); code != 0 {
 				t.Fatalf("exit code = %d, want 0", code)
 			}
 
@@ -177,7 +177,7 @@ func TestRunHelpWeb(t *testing.T) {
 func TestRunHelpWithoutWeb(t *testing.T) {
 	t.Parallel()
 
-	if code := main.Run([]string{"--help"}); code != 2 {
+	if code := cli.Run([]string{"--help"}); code != 2 {
 		t.Fatalf("--help exit = %d, want 2", code)
 	}
 }
@@ -200,7 +200,7 @@ func chdirFixture(t *testing.T) {
 func TestRunCheckFailsExitsThree(t *testing.T) {
 	chdirFixture(t)
 
-	if code := main.Run(
+	if code := cli.Run(
 		[]string{"--max", "types=0", "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."},
 	); code != 3 {
 		t.Fatalf("exit code = %d, want 3", code)
@@ -231,7 +231,7 @@ metrics:
 		t.Fatal(err)
 	}
 
-	if code := main.Run(
+	if code := cli.Run(
 		[]string{"--config", config, "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."},
 	); code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
@@ -245,12 +245,12 @@ func TestRunCheckKeyAndTriggers(t *testing.T) {
 
 	out := filepath.Join(t.TempDir(), "r.txt")
 
-	if code := main.Run([]string{"--max", "bogus=5", "--output", out, "./..."}); code != 2 {
+	if code := cli.Run([]string{"--max", "bogus=5", "--output", out, "./..."}); code != 2 {
 		t.Fatalf("unknown key exit = %d, want 2", code)
 	}
 
 	// No policy flag → no gate, even though types=0 would fail under one.
-	if code := main.Run([]string{"--output", out, "./..."}); code != 0 {
+	if code := cli.Run([]string{"--output", out, "./..."}); code != 0 {
 		t.Fatalf("ungated exit = %d, want 0", code)
 	}
 }

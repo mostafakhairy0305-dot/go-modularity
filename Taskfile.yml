@@ -119,7 +119,7 @@ tasks:
     run: once
     desc: Enforce the modularity policy (.modularity.yml); exits 3 on violations
     cmds:
-      - go run ./cmd/go-modularity --check ./...
+      - go run . --check ./...
   ci:
     run: once
     desc: Run CI checks

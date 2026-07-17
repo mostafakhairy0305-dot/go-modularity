@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 )
 

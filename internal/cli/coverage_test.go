@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/reporting/ports/outbound"
 )
@@ -116,27 +116,6 @@ func stubAnalyze(t *testing.T) {
 			Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "test"},
 			Module:        "example.com/m",
 		}, nil
-	}
-}
-
-func TestMainInvokesExit(t *testing.T) {
-	origExit, origAnalyze := exitFunc, analyze
-	t.Cleanup(func() { exitFunc, analyze = origExit, origAnalyze })
-
-	var code int
-	exitFunc = func(c int) { code = c }
-	analyze = func(context.Context, gomodularity.Config) (gomodularity.Report, error) {
-		return gomodularity.Report{
-			SchemaVersion: "2",
-			Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "test"},
-		}, nil
-	}
-	oldArgs := os.Args
-	os.Args = []string{"go-modularity", "--format=text", "./none"}
-	t.Cleanup(func() { os.Args = oldArgs })
-	main()
-	if code != 0 {
-		t.Fatalf("main exit = %d", code)
 	}
 }
 

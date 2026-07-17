@@ -3,7 +3,7 @@ package analyzer
 import (
 	"fmt"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 )
 
 // Settings configures the modularity policy analyzer. Fields map to the same

@@ -1,11 +1,11 @@
-package main
+package cli
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/infrastructure/policyconfig"
 )

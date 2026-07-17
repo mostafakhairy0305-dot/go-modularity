@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"sync"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
 	"golang.org/x/tools/go/analysis"
 )

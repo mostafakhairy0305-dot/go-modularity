@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
+	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 	"golang.org/x/tools/go/analysis"

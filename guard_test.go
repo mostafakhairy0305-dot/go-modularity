@@ -1,4 +1,4 @@
-package gomodularity
+package main
 
 import (
 	"go/parser"
