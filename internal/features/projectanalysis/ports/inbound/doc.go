@@ -1,5 +1,5 @@
 // Package inbound declares the project analysis inbound port.
 //
-// The port defines the analyzer contract used by the public API and command
-// line interface to run an analysis.
+// Analyzer is the contract the public gomodularity facade and the CLI use to
+// run one analysis and receive deterministic package and type results.
 package inbound

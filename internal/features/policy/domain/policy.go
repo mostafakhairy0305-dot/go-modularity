@@ -26,9 +26,13 @@ const (
 // Limit is a single condition on one field: an optional upper bound, an
 // optional lower bound, or both. The zero value imposes no constraint.
 type Limit struct {
-	Max    float64
+	// Max is the upper bound when HasMax is true.
+	Max float64
+	// HasMax reports whether Max is set.
 	HasMax bool
-	Min    float64
+	// Min is the lower bound when HasMin is true.
+	Min float64
+	// HasMin reports whether Min is set.
 	HasMin bool
 }
 

@@ -36,6 +36,7 @@ func (s stdoutStream) Close() error { return s.w.Flush() }
 
 // FileSink writes the report to a file, truncating any existing content.
 type FileSink struct {
+	// Path is the destination file path passed to os.Create.
 	Path string
 }
 

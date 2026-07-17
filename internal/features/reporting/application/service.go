@@ -13,6 +13,9 @@ import (
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 )
 
+// jsonMarshal is a seam so tests can force encoding failures.
+var jsonMarshal = json.Marshal
+
 // Write renders the report in the given format into the sink. Options are
 // read only by the text format.
 func Write(report gomodularity.Report, format domain.Format, sink outbound.Sink, opts domain.TextOptions) error {
@@ -40,20 +43,11 @@ func render(w io.Writer, report gomodularity.Report, format domain.Format, opts 
 	case domain.FormatJSON:
 		return renderJSON(w, report)
 	case domain.FormatCSV:
-		cw := csv.NewWriter(w)
-		err := cw.Write(domain.CSVHeader())
-		if err != nil {
-			return err
-		}
+		// WriteAll flushes; a separate header Write cannot surface bufio
+		// errors until Flush, so header and records go through one call.
+		rows := append([][]string{domain.CSVHeader()}, domain.CSVRecords(report)...)
 
-		err = cw.WriteAll(domain.CSVRecords(report))
-		if err != nil {
-			return err
-		}
-
-		cw.Flush()
-
-		return cw.Error()
+		return csv.NewWriter(w).WriteAll(rows)
 	case domain.FormatWeb:
 		return renderWeb(w, report)
 	default:
@@ -164,7 +158,7 @@ func encodeOrderedMetrics(results []metrics.MetricResult) ([]byte, error) {
 // encodeMetricEntry writes one name→metric pair. A non-applicable metric
 // carries its reason and no value — never a fake zero.
 func encodeMetricEntry(buf *bytes.Buffer, r metrics.MetricResult) error {
-	key, err := json.Marshal(r.Name)
+	key, err := jsonMarshal(r.Name)
 	if err != nil {
 		return err
 	}
@@ -183,7 +177,7 @@ func encodeMetricEntry(buf *bytes.Buffer, r metrics.MetricResult) error {
 		out.Value = &value
 	}
 
-	encoded, err := json.Marshal(out)
+	encoded, err := jsonMarshal(out)
 	if err != nil {
 		return err
 	}

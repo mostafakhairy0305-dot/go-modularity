@@ -65,8 +65,19 @@ func TestPipelineAnalyzeEndToEnd(t *testing.T) {
 	result, err := pipeline.Analyze(context.Background(), inbound.Options{
 		Patterns:        []string{"./..."},
 		DependencyScope: "project",
-		SelectedMetrics: []string{metrics.MetricAMC, metrics.MetricAbstractness, metrics.MetricInstability, metrics.MetricDistance},
-		Weights:         metrics.DefaultReusabilityWeights(),
+		SelectedMetrics: []string{
+			metrics.MetricAMC,
+			metrics.MetricLCOM1,
+			metrics.MetricLCOM96b,
+			metrics.MetricCAMC,
+			metrics.MetricTCC,
+			metrics.MetricCBO,
+			metrics.MetricReusability,
+			metrics.MetricAbstractness,
+			metrics.MetricInstability,
+			metrics.MetricDistance,
+		},
+		Weights: metrics.DefaultReusabilityWeights(),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -1,5 +1,5 @@
 // Package application coordinates the reusability metric feature.
 //
-// It validates component weights once per run and evaluates the type-level
-// reusability index from facts and upstream metric results.
+// It validates component weights once per run, then combines type facts with
+// upstream LCOM96b, AMC, and CBO results into the type-level reusability index.
 package application

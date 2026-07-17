@@ -1,5 +1,5 @@
 // Package application coordinates the architecture metric feature.
 //
-// It builds the package dependency graph once and computes Abstractness,
-// Instability, and Distance from the Main Sequence for each package.
+// It consumes indexed package facts, builds the package dependency graph once,
+// and produces Abstractness, Instability, and Distance results for each package.
 package application

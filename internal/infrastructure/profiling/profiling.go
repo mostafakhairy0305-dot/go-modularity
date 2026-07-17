@@ -8,6 +8,12 @@ import (
 	"runtime/pprof"
 )
 
+// Seams so tests can force write/close failures.
+var (
+	writeHeapProfile = pprof.WriteHeapProfile
+	closeFile        = func(f *os.File) error { return f.Close() }
+)
+
 // StartCPU begins CPU profiling into path and returns a stop function that
 // finishes the profile and closes the file.
 func StartCPU(path string) (stop func() error, err error) {
@@ -17,7 +23,7 @@ func StartCPU(path string) (stop func() error, err error) {
 	}
 
 	if err := pprof.StartCPUProfile(f); err != nil {
-		_ = f.Close()
+		_ = closeFile(f)
 
 		return nil, fmt.Errorf("start cpu profile: %w", err)
 	}
@@ -25,7 +31,7 @@ func StartCPU(path string) (stop func() error, err error) {
 	return func() error {
 		pprof.StopCPUProfile()
 
-		err := f.Close()
+		err := closeFile(f)
 		if err != nil {
 			return fmt.Errorf("close cpu profile: %w", err)
 		}
@@ -44,13 +50,13 @@ func WriteHeap(path string) error {
 
 	runtime.GC()
 
-	if err := pprof.WriteHeapProfile(f); err != nil {
-		_ = f.Close()
+	if err := writeHeapProfile(f); err != nil {
+		_ = closeFile(f)
 
 		return fmt.Errorf("write memory profile: %w", err)
 	}
 
-	if err := f.Close(); err != nil {
+	if err := closeFile(f); err != nil {
 		return fmt.Errorf("close memory profile: %w", err)
 	}
 

@@ -2,7 +2,6 @@ package application
 
 import (
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -34,7 +33,7 @@ type webPayload struct {
 // compile-time docs payload is injected before the report payload, whose
 // untrusted identifiers could otherwise spoof the docs placeholder.
 func renderWeb(w io.Writer, report gomodularity.Report) error {
-	payload, err := json.Marshal(webPayload{
+	payload, err := jsonMarshal(webPayload{
 		Module: report.Module,
 		Report: buildJSONReport(report),
 	})

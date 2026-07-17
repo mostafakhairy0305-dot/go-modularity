@@ -134,3 +134,63 @@ func TestDiscover(t *testing.T) {
 		t.Errorf("discovered path = %q", path)
 	}
 }
+
+func TestDiscoverEmptyDirUsesCwd(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.WriteFile(policyconfig.FileName, []byte("version: 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	path, ok := policyconfig.Discover("")
+	if !ok {
+		t.Fatal("Discover(\"\") did not find cwd config")
+	}
+	if filepath.Base(path) != policyconfig.FileName {
+		t.Errorf("discovered path = %q", path)
+	}
+}
+
+func TestLoadRelativeNameAndDirectoryPath(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	name := "policy.yml"
+	if err := os.WriteFile(name, []byte("version: 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := policyconfig.Load(name); err != nil {
+		t.Fatalf("Load(%q) = %v", name, err)
+	}
+
+	if _, err := policyconfig.Load(dir + string(filepath.Separator)); err == nil {
+		t.Fatal("Load(directory) succeeded, want error")
+	}
+}
+
+func TestLoadBadLimitShapes(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		"non-number scalar": "version: 1\nmetrics:\n  amc: \"x\"\n",
+		"sequence limit":    "version: 1\nmetrics:\n  amc: [1]\n",
+		"bad mapping value": "version: 1\nmetrics:\n  amc: { max: { nested: 1 } }\n",
+	}
+	for name, content := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := policyconfig.Load(write(t, content)); err == nil {
+				t.Fatal("want decode error, got nil")
+			}
+		})
+	}
+}
+
+func TestLoadOpenRootFailure(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "missing-dir", "policy.yml")
+	if _, err := policyconfig.Load(missing); err == nil {
+		t.Fatal("Load with missing directory succeeded")
+	}
+}

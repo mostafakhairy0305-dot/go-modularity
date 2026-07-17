@@ -8,10 +8,18 @@ import (
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/ports/outbound"
 )
 
+// Collector is the type-facts application boundary consumed by analysis
+// pipelines. Implementations load and assemble one deterministic project view.
+type Collector interface {
+	Collect(context.Context, outbound.FactOptions) (domain.ProjectFacts, error)
+}
+
 // Service produces ProjectFacts through the outbound fact source.
 type Service struct {
 	source outbound.FactSource
 }
+
+var _ Collector = (*Service)(nil)
 
 // NewService returns a Service backed by the given fact source.
 func NewService(source outbound.FactSource) *Service {

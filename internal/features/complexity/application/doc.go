@@ -1,4 +1,5 @@
 // Package application coordinates the complexity metric feature.
 //
-// It computes per-method cyclomatic complexity and the type-level AMC metric.
+// It consumes per-method branch facts from the type-fact model, computes
+// cyclomatic complexity per method, and produces the type-level AMC metric.
 package application

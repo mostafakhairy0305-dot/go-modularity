@@ -1,0 +1,24 @@
+# Example golangci-lint v2 config enabling the go-modularity Module Plugin.
+# Requires a custom binary built from .custom-gcl.yml (golangci-lint custom).
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - gomodularity
+  settings:
+    custom:
+      gomodularity:
+        type: module
+        description: Enforce Go modularity policy thresholds
+        settings:
+          # Optional path to a policy file. Empty discovers .modularity.yml
+          # in the working directory, else uses recommended defaults.
+          config: .modularity.yml
+          # Package patterns for the whole-module analyze (default: ["./..."]).
+          patterns:
+            - ./...
+          tests: false
+          generated: false
+          dependency-scope: module
+          field-usage: direct

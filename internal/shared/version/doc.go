@@ -1,4 +1,5 @@
-// Package version exposes the tool version.
+// Package version exposes the go-modularity tool version string.
 //
-// The Version variable can be set at link time by release builds.
+// Release builds may override Version at link time with -X; the CLI and report
+// ToolInfo both read from this package.
 package version

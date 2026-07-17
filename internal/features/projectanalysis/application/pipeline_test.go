@@ -22,20 +22,20 @@ func TestCollectOptionsMapping(t *testing.T) {
 }
 
 // White-box: the reusability service is built only when needed.
-func TestNewReusabilityServiceGating(t *testing.T) {
+func TestNewReusabilityCalculatorGating(t *testing.T) {
 	t.Parallel()
 
-	svc, err := newReusabilityService(map[string]bool{}, metrics.DefaultReusabilityWeights())
-	if err != nil || svc != nil {
-		t.Fatalf("no reusability/cbo selected → nil service; got %v err %v", svc, err)
+	calculator, err := newReusabilityCalculator(map[string]bool{}, metrics.DefaultReusabilityWeights())
+	if err != nil || calculator != nil {
+		t.Fatalf("no reusability/cbo selected → nil calculator; got %v err %v", calculator, err)
 	}
 
-	svc, err = newReusabilityService(map[string]bool{metrics.MetricReusability: true}, metrics.DefaultReusabilityWeights())
-	if err != nil || svc == nil {
-		t.Fatalf("reusability selected → service; got %v err %v", svc, err)
+	calculator, err = newReusabilityCalculator(map[string]bool{metrics.MetricReusability: true}, metrics.DefaultReusabilityWeights())
+	if err != nil || calculator == nil {
+		t.Fatalf("reusability selected → calculator; got %v err %v", calculator, err)
 	}
 
-	if _, err := newReusabilityService(map[string]bool{metrics.MetricCBO: true},
+	if _, err := newReusabilityCalculator(map[string]bool{metrics.MetricCBO: true},
 		metrics.ReusabilityWeights{Cohesion: -1, Coupling: 1}); err == nil {
 		t.Fatal("bad weights should fail")
 	}
@@ -45,7 +45,7 @@ func TestNewReusabilityServiceGating(t *testing.T) {
 func TestComputeArchitectureGating(t *testing.T) {
 	t.Parallel()
 
-	if got := computeArchitecture(nil, map[string]bool{}, inbound.Options{}); got != nil {
+	if got := computeArchitecture(nil, nil, map[string]bool{}); got != nil {
 		t.Fatalf("no package metric selected → nil; got %v", got)
 	}
 }

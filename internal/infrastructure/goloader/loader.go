@@ -24,6 +24,14 @@ const loadMode = packages.NeedName |
 	packages.NeedTypesInfo |
 	packages.NeedTypesSizes
 
+// Seams for tests that need to force OS / packages / worker failures.
+var (
+	packagesLoad      = packages.Load
+	runExtractWorkers = workerpool.Run
+	osGetwd           = os.Getwd
+	filepathAbs       = filepath.Abs
+)
+
 // Loader implements outbound.FactSource on top of golang.org/x/tools.
 type Loader struct{}
 
@@ -74,7 +82,7 @@ func loadPackages(ctx context.Context, opts outbound.FactOptions) ([]*packages.P
 		cfg.BuildFlags = []string{"-tags=" + strings.Join(opts.BuildTags, ",")}
 	}
 
-	loaded, err := packages.Load(cfg, patterns...)
+	loaded, err := packagesLoad(cfg, patterns...)
 	if err != nil {
 		return nil, fmt.Errorf("load packages: %w", err)
 	}
@@ -108,7 +116,7 @@ func extractAll(ctx context.Context, pkgs []*packages.Package, opts outbound.Fac
 	extracts := make([]domain.PackageExtract, len(pkgs))
 	workers := workerpool.Workers(opts.Workers, len(pkgs))
 
-	err := workerpool.Run(ctx, workers, len(pkgs), func(i int) error {
+	err := runExtractWorkers(ctx, workers, len(pkgs), func(i int) error {
 		pkg := pkgs[i]
 		extracts[i] = extractPackage(pkg, extractorOptions{
 			includeGenerated: opts.IncludeGenerated,
@@ -221,14 +229,14 @@ func mainModulePath(pkgs []*packages.Package) string {
 // be reported relative to it.
 func resolveBaseDir(dir string) string {
 	if dir == "" {
-		if wd, err := os.Getwd(); err == nil {
+		if wd, err := osGetwd(); err == nil {
 			return wd
 		}
 
 		return ""
 	}
 
-	if abs, err := filepath.Abs(dir); err == nil {
+	if abs, err := filepathAbs(dir); err == nil {
 		return abs
 	}
 

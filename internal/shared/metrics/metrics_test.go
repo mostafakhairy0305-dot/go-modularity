@@ -107,6 +107,10 @@ func TestDistance(t *testing.T) {
 	// Isolated packages have instability 0, so distance stays computable.
 	assertApplicable(t, Distance(abstractness, Instability(0, 0)), 0.75)
 	assertApplicable(t, Distance(Abstractness(1, 1), Instability(0, 2)), 1)
+
+	assertNotApplicable(t, Distance(abstractness, MetricResult{
+		Name: MetricInstability, Applicable: false, Reason: "no coupling data",
+	}))
 }
 
 func TestReusabilityAllComponents(t *testing.T) {
@@ -163,6 +167,22 @@ func TestReusabilityAllDropped(t *testing.T) {
 		if !strings.Contains(r.Reason, want) {
 			t.Fatalf("reason %q missing %q", r.Reason, want)
 		}
+	}
+}
+
+func TestReusabilityZeroWeightApplicable(t *testing.T) {
+	// Applicable cohesion carries zero weight; the rest are dropped → weightSum 0
+	// but not every component was dropped.
+	r := Reusability(
+		ReusabilityComponent{Name: ComponentCohesion, Value: 1, Applicable: true},
+		ReusabilityComponent{Name: ComponentCoupling, Reason: "no dependency data"},
+		ReusabilityComponent{Name: ComponentTestability, Reason: "type has no methods"},
+		ReusabilityComponent{Name: ComponentDocumentation, Reason: "type has no exported members"},
+		ReusabilityWeights{Cohesion: 0, Coupling: 0.25, Testability: 0.25, Documentation: 0.15},
+	)
+	assertNotApplicable(t, r)
+	if !strings.Contains(r.Reason, "zero total weight") {
+		t.Fatalf("reason %q missing zero-weight message", r.Reason)
 	}
 }
 
@@ -244,5 +264,12 @@ func TestClosure(t *testing.T) {
 
 	if got := Closure([]string{MetricTCC}); len(got) != 1 || got[0] != MetricTCC {
 		t.Fatalf("closure(tcc) = %v", got)
+	}
+
+	// Distance already pulls Abstractness; selecting both hits the seen early-return.
+	got = Closure([]string{MetricDistance, MetricAbstractness})
+	want = []string{MetricAbstractness, MetricInstability, MetricDistance}
+	if len(got) != len(want) {
+		t.Fatalf("closure with duplicate deps = %v, want %v", got, want)
 	}
 }

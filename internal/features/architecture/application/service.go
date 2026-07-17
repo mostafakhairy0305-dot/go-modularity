@@ -17,14 +17,13 @@ type Result struct {
 }
 
 // ComputeForPackages evaluates the package-level metrics for every analyzed
-// package, indexed by package ID.
-func ComputeForPackages(facts *typefacts.ProjectFacts, scope domain.Scope) []Result {
-	graph := domain.BuildDependencyGraph(facts, scope)
-
+// package, indexed by package ID. The caller supplies the graph so a complete
+// analysis can reuse the same coupling traversal for metrics and structure.
+func ComputeForPackages(facts *typefacts.ProjectFacts, graph domain.CouplingGraph) []Result {
 	results := make([]Result, len(facts.Packages))
 	for i := range facts.Packages {
 		counts := domain.CountTypes(facts, &facts.Packages[i])
-		coupling := graph.Couplings[i]
+		coupling := graph.Coupling(i)
 
 		abstractness := metrics.Abstractness(counts.Interfaces, counts.Total)
 		instability := metrics.Instability(coupling.Afferent, coupling.Efferent)

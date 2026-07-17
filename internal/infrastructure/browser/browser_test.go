@@ -48,3 +48,10 @@ func TestOpenWrapsLaunchError(t *testing.T) {
 		t.Errorf("error %q does not name the path", err)
 	}
 }
+
+// White-box: the default startCommand body calls cmd.Start().
+func TestDefaultStartCommand(t *testing.T) {
+	if err := startCommand(exec.Command("true")); err != nil {
+		t.Fatalf("startCommand(true) = %v", err)
+	}
+}

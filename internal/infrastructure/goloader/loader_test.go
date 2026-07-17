@@ -3,6 +3,7 @@ package goloader
 import (
 	"go/types"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
@@ -42,6 +43,12 @@ func TestSelectPackages(t *testing.T) {
 
 	if _, err := selectPackages([]*packages.Package{base, broken}, false); err == nil {
 		t.Fatal("broken package without ContinueOnError should error")
+	}
+
+	missingTypes := &packages.Package{PkgPath: "m/missing-types"}
+	if _, err := selectPackages([]*packages.Package{missingTypes}, false); err == nil ||
+		!strings.Contains(err.Error(), "type information unavailable") {
+		t.Fatalf("missing type information error = %v", err)
 	}
 }
 

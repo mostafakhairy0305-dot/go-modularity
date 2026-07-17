@@ -23,7 +23,8 @@ func TestComputeForPackagesIsolated(t *testing.T) {
 		},
 	}
 
-	got := architecture.ComputeForPackages(facts, domain.Scope("project"))
+	graph := domain.BuildDependencyGraph(facts, domain.Scope("project"))
+	got := architecture.ComputeForPackages(facts, graph)
 	if len(got) != 1 {
 		t.Fatalf("got %d results", len(got))
 	}

@@ -18,11 +18,26 @@ func TestRunFixtureJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := filepath.Join(t.TempDir(), "report.json")
+	tmp := t.TempDir()
+	out := filepath.Join(tmp, "report.json")
+	cpuProfile := filepath.Join(tmp, "cpu.prof")
+	memoryProfile := filepath.Join(tmp, "memory.prof")
 	t.Chdir(fixture)
 
-	if code := main.Run([]string{"--format=json", "--output=" + out, "./..."}); code != 0 {
+	if code := main.Run([]string{
+		"--format=json",
+		"--output=" + out,
+		"--cpu-profile=" + cpuProfile,
+		"--memory-profile=" + memoryProfile,
+		"./...",
+	}); code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
+	}
+	for _, profile := range []string{cpuProfile, memoryProfile} {
+		info, err := os.Stat(profile)
+		if err != nil || info.Size() == 0 {
+			t.Fatalf("profile %q was not written: info=%v err=%v", profile, info, err)
+		}
 	}
 
 	data, err := os.ReadFile(out)

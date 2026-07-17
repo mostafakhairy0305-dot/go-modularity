@@ -8,6 +8,12 @@ import (
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 )
 
+type couplingGraph []domain.Coupling
+
+func (g couplingGraph) Coupling(packageID int) domain.Coupling {
+	return g[packageID]
+}
+
 func assertValue(t *testing.T, r metrics.MetricResult, want float64) {
 	t.Helper()
 
@@ -40,7 +46,10 @@ func TestComputeForPackages(t *testing.T) {
 		},
 	}
 
-	got := ComputeForPackages(facts, domain.Scope("project"))
+	got := ComputeForPackages(facts, couplingGraph{
+		{Efferent: 1},
+		{Afferent: 1},
+	})
 	if len(got) != 2 {
 		t.Fatalf("got %d results", len(got))
 	}

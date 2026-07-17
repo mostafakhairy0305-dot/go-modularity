@@ -29,12 +29,25 @@ type Coupling struct {
 	Efferent int
 }
 
+// CouplingGraph exposes read-only package coupling by package ID. Consumers
+// depend on this narrow view instead of the graph's concrete storage.
+type CouplingGraph interface {
+	Coupling(packageID int) Coupling
+}
+
 // DependencyGraph is the analyzed packages' coupling, indexed by package ID.
 // It is built once per analysis run.
 type DependencyGraph struct {
 	// Couplings holds each package's dependency counts, indexed by ID.
 	Couplings []Coupling
 }
+
+// Coupling returns the dependency counts for packageID.
+func (g DependencyGraph) Coupling(packageID int) Coupling {
+	return g.Couplings[packageID]
+}
+
+var _ CouplingGraph = DependencyGraph{}
 
 // BuildDependencyGraph derives the dependency graph from the package facts.
 // Import lists are already deduplicated and free of self-edges.

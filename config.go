@@ -35,18 +35,32 @@ const (
 // MetricName identifies a selectable metric.
 type MetricName string
 
-// The selectable metrics.
+// Selectable metric names. Type-level metrics apply per named type; package-level
+// metrics apply once per analyzed package.
 const (
-	MetricAMC          MetricName = metrics.MetricAMC
-	MetricLCOM1        MetricName = metrics.MetricLCOM1
-	MetricLCOM96b      MetricName = metrics.MetricLCOM96b
-	MetricCAMC         MetricName = metrics.MetricCAMC
-	MetricTCC          MetricName = metrics.MetricTCC
-	MetricCBO          MetricName = metrics.MetricCBO
-	MetricReusability  MetricName = metrics.MetricReusability
+	// MetricAMC is average method cyclomatic complexity (type-level).
+	MetricAMC MetricName = metrics.MetricAMC
+	// MetricLCOM1 is lack of cohesion of methods, Chidamber & Kemerer (type-level).
+	MetricLCOM1 MetricName = metrics.MetricLCOM1
+	// MetricLCOM96b is Bieman & Kang lack of cohesion in the range 0..1 (type-level).
+	MetricLCOM96b MetricName = metrics.MetricLCOM96b
+	// MetricCAMC is cohesion among methods of a class via parameter types (type-level).
+	MetricCAMC MetricName = metrics.MetricCAMC
+	// MetricTCC is tight class cohesion over method pairs that share fields (type-level).
+	MetricTCC MetricName = metrics.MetricTCC
+	// MetricCBO is coupling between objects: distinct referenced named types (type-level).
+	MetricCBO MetricName = metrics.MetricCBO
+	// MetricReusability is a weighted composite of cohesion, coupling, testability,
+	// and documentation (type-level).
+	MetricReusability MetricName = metrics.MetricReusability
+	// MetricAbstractness is the ratio of interface types among relevant named types
+	// (package-level).
 	MetricAbstractness MetricName = metrics.MetricAbstractness
-	MetricInstability  MetricName = metrics.MetricInstability
-	MetricDistance     MetricName = metrics.MetricDistance
+	// MetricInstability is Ce/(Ca+Ce) for in-scope package coupling (package-level).
+	MetricInstability MetricName = metrics.MetricInstability
+	// MetricDistance is abs(abstractness + instability - 1), distance from the main
+	// sequence (package-level).
+	MetricDistance MetricName = metrics.MetricDistance
 )
 
 // ReusabilityWeights aliases the metrics package's weight type so callers can

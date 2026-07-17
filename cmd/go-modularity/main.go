@@ -36,8 +36,21 @@ import (
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/version"
 )
 
+// Seams for tests that need to force exit, analysis, terminal, and I/O paths.
+var (
+	exitFunc       = os.Exit
+	analyze        = gomodularity.Analyze
+	isTerminal     = stdoutIsTerminal
+	createHelpTemp = os.CreateTemp
+	closeHelpFile  = func(f *os.File) error { return f.Close() }
+	writeDocs      = reporting.WriteDocs
+	openBrowser    = browser.Open
+	startCPU       = profiling.StartCPU
+	writeHeap      = profiling.WriteHeap
+)
+
 func main() {
-	os.Exit(run(os.Args[1:]))
+	exitFunc(run(os.Args[1:]))
 }
 
 func run(args []string) int {
@@ -118,7 +131,7 @@ func run(args []string) int {
 	defer stop()
 
 	if *cpuProfile != "" {
-		stopProfile, err := profiling.StartCPU(*cpuProfile)
+		stopProfile, err := startCPU(*cpuProfile)
 		if err != nil {
 			logger.Error("cpu profiling failed", "error", err)
 
@@ -172,7 +185,7 @@ func run(args []string) int {
 
 	start := time.Now()
 
-	report, err := gomodularity.Analyze(ctx, config)
+	report, err := analyze(ctx, config)
 	if err != nil {
 		logger.Error("analysis failed", "error", err)
 
@@ -189,7 +202,7 @@ func run(args []string) int {
 		"packages", len(report.Packages), "duration", time.Since(start))
 
 	if *memoryProfile != "" {
-		err := profiling.WriteHeap(*memoryProfile)
+		err := writeHeap(*memoryProfile)
 		if err != nil {
 			logger.Error("memory profiling failed", "error", err)
 
@@ -211,7 +224,7 @@ func run(args []string) int {
 	}
 
 	textOptions := reportingdomain.TextOptions{
-		Color:   outputPath == "" && os.Getenv("NO_COLOR") == "" && stdoutIsTerminal(),
+		Color:   outputPath == "" && os.Getenv("NO_COLOR") == "" && isTerminal(),
 		Explain: *explain,
 	}
 	if err := reporting.Write(report, reportFormat, sink, textOptions); err != nil {
@@ -225,8 +238,8 @@ func run(args []string) int {
 	if webToDefaultFile {
 		logger.Info("report written", "path", outputPath)
 
-		if stdoutIsTerminal() {
-			if err := browser.Open(outputPath); err != nil {
+		if isTerminal() {
+			if err := openBrowser(outputPath); err != nil {
 				logger.Warn("opening the report in a browser failed", "error", err)
 			}
 		}
@@ -323,8 +336,8 @@ func runWebHelp() int {
 
 	logger.Info("metrics guide written", "path", path)
 
-	if stdoutIsTerminal() {
-		if err := browser.Open(path); err != nil {
+	if isTerminal() {
+		if err := openBrowser(path); err != nil {
 			logger.Warn("opening the metrics guide in a browser failed", "error", err)
 		}
 	}
@@ -335,17 +348,17 @@ func runWebHelp() int {
 // writeHelpDocs renders the metrics guide into a fresh temp file and
 // returns its path.
 func writeHelpDocs() (string, error) {
-	file, err := os.CreateTemp("", "go-modularity-help-*.html")
+	file, err := createHelpTemp("", "go-modularity-help-*.html")
 	if err != nil {
 		return "", err
 	}
 
 	path := file.Name()
-	if err := file.Close(); err != nil {
+	if err := closeHelpFile(file); err != nil {
 		return "", err
 	}
 
-	if err := reporting.WriteDocs(sinks.FileSink{Path: path}, version.Version); err != nil {
+	if err := writeDocs(sinks.FileSink{Path: path}, version.Version); err != nil {
 		return "", err
 	}
 

@@ -16,7 +16,9 @@ type MetricResult = metrics.MetricResult
 
 // ToolInfo identifies the tool that produced a report.
 type ToolInfo struct {
-	Name    string
+	// Name is the tool name embedded in reports; equals ToolName for this build.
+	Name string
+	// Version is the tool version string at analysis time.
 	Version string
 }
 

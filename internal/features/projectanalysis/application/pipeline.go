@@ -17,13 +17,16 @@ import (
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/workerpool"
 )
 
+// runWorkers is a seam so tests can force workerpool.Run failures.
+var runWorkers = workerpool.Run
+
 // Pipeline implements the inbound Analyzer port.
 type Pipeline struct {
-	facts *typefacts.Service
+	facts typefacts.Collector
 }
 
-// NewPipeline returns a pipeline backed by the given fact service.
-func NewPipeline(facts *typefacts.Service) *Pipeline {
+// NewPipeline returns a pipeline backed by the given fact collector.
+func NewPipeline(facts typefacts.Collector) *Pipeline {
 	return &Pipeline{facts: facts}
 }
 
@@ -36,7 +39,7 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 
 	// Reusability weights are validated up front so a bad configuration
 	// fails before any loading happens.
-	reusabilitySvc, err := newReusabilityService(compute, opts.Weights)
+	reusabilityCalculator, err := newReusabilityCalculator(compute, opts.Weights)
 	if err != nil {
 		return inbound.Result{}, err
 	}
@@ -46,7 +49,7 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 		return inbound.Result{}, err
 	}
 
-	return assembleResult(ctx, &facts, reusabilitySvc, display, compute, opts)
+	return assembleResult(ctx, &facts, reusabilityCalculator, display, compute, opts)
 }
 
 // assembleResult computes the architecture metrics and every package's results
@@ -54,7 +57,7 @@ func (p *Pipeline) Analyze(ctx context.Context, opts inbound.Options) (inbound.R
 func assembleResult(
 	ctx context.Context,
 	facts *tfdomain.ProjectFacts,
-	reusabilitySvc *reusability.Service,
+	reusabilityCalculator reusability.Calculator,
 	display, compute map[string]bool,
 	opts inbound.Options,
 ) (inbound.Result, error) {
@@ -62,17 +65,16 @@ func assembleResult(
 		return inbound.Result{}, err
 	}
 
-	archResults := computeArchitecture(facts, compute, opts)
-
 	// The dependency graph is cheap and feeds the structural Ca/Ce facts,
 	// so it is built regardless of the selected metrics.
 	graph := archdomain.BuildDependencyGraph(facts, archdomain.Scope(opts.DependencyScope))
+	archResults := computeArchitecture(facts, graph, compute)
 
 	packageResults := make([]inbound.PackageResult, len(facts.Packages))
 	workers := workerpool.Workers(opts.Workers, len(facts.Packages))
 
-	err := workerpool.Run(ctx, workers, len(facts.Packages), func(i int) error {
-		packageResults[i] = analyzePackage(facts, i, graph.Couplings[i], archResults, reusabilitySvc, display, compute, opts)
+	err := runWorkers(ctx, workers, len(facts.Packages), func(i int) error {
+		packageResults[i] = analyzePackage(facts, i, graph.Coupling(i), archResults, reusabilityCalculator, display, compute, opts)
 
 		return nil
 	})
@@ -83,9 +85,9 @@ func assembleResult(
 	return inbound.Result{ModulePath: facts.ModulePath, Packages: packageResults}, nil
 }
 
-// newReusabilityService builds the reusability service when the compute set
-// needs it; a nil service disables per-type reusability and CBO.
-func newReusabilityService(compute map[string]bool, weights metrics.ReusabilityWeights) (*reusability.Service, error) {
+// newReusabilityCalculator builds the reusability calculator when the compute
+// set needs it; a nil calculator disables per-type reusability and CBO.
+func newReusabilityCalculator(compute map[string]bool, weights metrics.ReusabilityWeights) (reusability.Calculator, error) {
 	if !compute[metrics.MetricReusability] && !compute[metrics.MetricCBO] {
 		return nil, nil
 	}
@@ -108,13 +110,17 @@ func collectOptions(opts inbound.Options) tfoutbound.FactOptions {
 
 // computeArchitecture runs the package-level metrics once over the whole
 // dependency graph; nil when no package metric is in the compute set.
-func computeArchitecture(facts *tfdomain.ProjectFacts, compute map[string]bool, opts inbound.Options) []architecture.Result {
+func computeArchitecture(
+	facts *tfdomain.ProjectFacts,
+	graph archdomain.CouplingGraph,
+	compute map[string]bool,
+) []architecture.Result {
 	if !compute[metrics.MetricAbstractness] && !compute[metrics.MetricInstability] &&
 		!compute[metrics.MetricDistance] {
 		return nil
 	}
 
-	return architecture.ComputeForPackages(facts, archdomain.Scope(opts.DependencyScope))
+	return architecture.ComputeForPackages(facts, graph)
 }
 
 // analyzePackage computes one package's display metrics and those of its
@@ -125,7 +131,7 @@ func analyzePackage(
 	pkgID int,
 	coupling archdomain.Coupling,
 	archResults []architecture.Result,
-	reusabilitySvc *reusability.Service,
+	reusabilityCalculator reusability.Calculator,
 	display, compute map[string]bool,
 	opts inbound.Options,
 ) inbound.PackageResult {
@@ -149,7 +155,7 @@ func analyzePackage(
 	result.Types = make([]inbound.TypeResult, 0, len(pkg.TypeIDs))
 	for _, typeID := range pkg.TypeIDs {
 		result.Types = append(result.Types, analyzeType(
-			&facts.Types[typeID], reusabilitySvc, display, needComplexity, needCohesion, opts,
+			&facts.Types[typeID], reusabilityCalculator, display, needComplexity, needCohesion, opts,
 		))
 	}
 
@@ -183,7 +189,7 @@ func packageMetrics(arch architecture.Result, display map[string]bool) []metrics
 // order.
 func analyzeType(
 	t *tfdomain.TypeFacts,
-	reusabilitySvc *reusability.Service,
+	reusabilityCalculator reusability.Calculator,
 	display map[string]bool,
 	needComplexity, needCohesion bool,
 	opts inbound.Options,
@@ -199,8 +205,8 @@ func analyzeType(
 	}
 
 	var reusabilityResult reusability.Result
-	if reusabilitySvc != nil {
-		reusabilityResult = reusabilitySvc.ComputeForType(
+	if reusabilityCalculator != nil {
+		reusabilityResult = reusabilityCalculator.ComputeForType(
 			t, complexityResult.AMC, cohesionResult.LCOM96b,
 		)
 	}

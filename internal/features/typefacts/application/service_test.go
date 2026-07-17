@@ -1,9 +1,12 @@
 package application
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
+	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/ports/outbound"
 )
 
 func TestAssembleOrderingAndIDs(t *testing.T) {
@@ -66,5 +69,40 @@ func TestAssembleOrderingAndIDs(t *testing.T) {
 
 	if len(zeta.TypeIDs) != 2 || facts.Types[zeta.TypeIDs[0]].Name != "A" {
 		t.Fatalf("zeta.TypeIDs = %v", zeta.TypeIDs)
+	}
+}
+
+type errSource struct{ err error }
+
+func (s errSource) Load(context.Context, outbound.FactOptions) (string, []domain.PackageExtract, error) {
+	return "", nil, s.err
+}
+
+func TestCollectPropagatesLoadError(t *testing.T) {
+	sentinel := errors.New("load failed")
+	_, err := NewService(errSource{err: sentinel}).Collect(context.Background(), outbound.FactOptions{})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("Collect error = %v, want sentinel", err)
+	}
+}
+
+func TestResolveKeysAllMissing(t *testing.T) {
+	facts := Assemble("example.com/m", []domain.PackageExtract{{
+		Path:  "example.com/m/p",
+		Types: []domain.TypeExtract{{Name: "T", ReferencedTypeKeys: []string{"example.com/m/other.U"}}},
+	}})
+	if ids := facts.Types[0].ReferencedTypeIDs; ids != nil {
+		t.Fatalf("ReferencedTypeIDs = %v, want nil", ids)
+	}
+}
+
+func TestSortedUniqueSelfOnly(t *testing.T) {
+	facts := Assemble("example.com/m", []domain.PackageExtract{{
+		Path:    "example.com/m/p",
+		Imports: []string{"example.com/m/p"},
+		Types:   []domain.TypeExtract{{Name: "T"}},
+	}})
+	if imports := facts.Packages[0].Imports; imports != nil {
+		t.Fatalf("Imports = %v, want nil", imports)
 	}
 }

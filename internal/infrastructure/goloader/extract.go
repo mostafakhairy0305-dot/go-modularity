@@ -252,12 +252,9 @@ func sortedMethods(fset *token.FileSet, opts extractorOptions, generated map[str
 		methods = append(methods, methodDecl{fn: fn, decl: decl})
 	}
 
+	// Method names on a named type are unique, so name order is enough.
 	sort.Slice(methods, func(i, j int) bool {
-		if methods[i].fn.Name() != methods[j].fn.Name() {
-			return methods[i].fn.Name() < methods[j].fn.Name()
-		}
-
-		return methods[i].decl.Pos() < methods[j].decl.Pos()
+		return methods[i].fn.Name() < methods[j].fn.Name()
 	})
 
 	return methods

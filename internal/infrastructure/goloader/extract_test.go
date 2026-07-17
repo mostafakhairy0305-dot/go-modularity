@@ -2,6 +2,7 @@ package goloader
 
 import (
 	"go/ast"
+	"go/token"
 	"testing"
 
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
@@ -31,5 +32,23 @@ func TestCountBranchForLoops(t *testing.T) {
 				t.Errorf("countBranch(%s): Fors = %d, want 1", tt.name, branches.Fors)
 			}
 		})
+	}
+}
+
+func TestCountBranchAdditionalConstructs(t *testing.T) {
+	t.Parallel()
+
+	var branches domain.BranchStats
+	for _, node := range []ast.Node{
+		&ast.RangeStmt{},
+		&ast.CaseClause{List: []ast.Expr{&ast.Ident{Name: "value"}}},
+		&ast.CommClause{Comm: &ast.SendStmt{}},
+		&ast.BinaryExpr{Op: token.LAND},
+	} {
+		countBranch(node, &branches)
+	}
+
+	if branches.Ranges != 1 || branches.Cases != 1 || branches.SelectComms != 1 || branches.LogicalOps != 1 {
+		t.Fatalf("branch counts = %+v", branches)
 	}
 }

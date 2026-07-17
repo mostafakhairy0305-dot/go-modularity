@@ -1,8 +1,54 @@
 # go-modularity
 
 `go-modularity` analyzes Go packages and reports type-level and package-level
-modularity metrics. It can render a readable terminal table, a stable JSON
-schema, flat CSV rows for scripts, or an interactive single-file HTML report.
+modularity metrics. Use it as the `gomodularity` linter in a custom
+golangci-lint binary or as an independent CLI that renders a terminal table,
+stable JSON, flat CSV, or an interactive single-file HTML report.
+
+## golangci-lint Integration
+
+The `gomodularity` module plugin runs the same policy checks as
+`go-modularity -check` and reports policy violations as golangci-lint
+diagnostics. The standalone CLI remains available and works independently.
+
+1. Add a `.custom-gcl.yml` that embeds the plugin package. This repository
+   includes one for local development:
+
+```yaml
+version: v2.12.2
+plugins:
+  - module: github.com/mostafakhairy0305-dot/go-modularity
+    import: github.com/mostafakhairy0305-dot/go-modularity/plugin
+    version: v0.1.0   # or use path: . for a local checkout
+```
+
+2. Enable the linter in `.golangci.yml` (see `.golangci.example.yml`):
+
+```yaml
+version: "2"
+linters:
+  enable:
+    - gomodularity
+  settings:
+    custom:
+      gomodularity:
+        type: module
+        description: Enforce Go modularity policy thresholds
+        settings:
+          config: .modularity.yml
+```
+
+3. Build the custom golangci-lint binary and run it:
+
+```sh
+golangci-lint custom -v
+./custom-gcl run ./...
+```
+
+The plugin settings mirror the CLI flags: `config`, `patterns`, `tests`,
+`generated`, `dependency-scope`, `field-usage`, `workers`,
+`continue-on-error`, and `build-tags`. For policy behavior and configuration,
+see [Policy Checks](#policy-checks).
 
 ## Install
 

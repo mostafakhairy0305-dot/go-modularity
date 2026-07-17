@@ -4,27 +4,36 @@ Date: 2026-07-11
 
 ## Status
 
-Accepted
+Accepted (amended 2026-07-17)
 
 ## Context
 
-The analyzer is consumed two ways: as a CLI and as an importable library.
-Library consumers need a stable, documented API, but the implementation —
-pipelines, loaders, metric packages — needs the freedom to change shape
-without breaking anyone.
+The analyzer is consumed as a CLI, as an importable library, and — after
+ADR 0019 — as a golangci-lint Module Plugin. Library consumers need a stable,
+documented metrics API, but the implementation — pipelines, loaders, metric
+packages — needs the freedom to change shape without breaking anyone. Lint
+integration needs a small public surface that golangci-lint can blank-import;
+that surface must not collapse into the metrics facade.
 
 ## Decision
 
-The root package `gomodularity` is the only public API. It exposes
+The root package `gomodularity` remains the public metrics API. It exposes
 `Analyze(ctx context.Context, config Config) (Report, error)` plus the
 `Config` and `Report` types (`gomodularity.go`, `config.go`, `report.go`).
-Every implementation package lives under `internal/`, which the Go compiler
-makes unimportable from outside the module.
+
+Two additional public packages exist solely for lint integration (ADR 0019):
+
+- `analyzer` — a `go/analysis` Analyzer with no golangci-lint dependency
+- `plugin` — the Module Plugin registration entry point
+
+Every other implementation package lives under `internal/`, which the Go
+compiler makes unimportable from outside the module.
 
 ## Consequences
 
 Internals can be refactored freely — the ports, features, and adapters of
-ADR 0002 are invisible to consumers. There is exactly one entry point to
-document and keep backward compatible. The flip side is deliberate: nothing
-inside `internal/` can be reused by third parties, and any capability worth
-exposing must be surfaced through the facade's `Config` and `Report`.
+ADR 0002 are invisible to consumers. The metrics facade stays the stable
+library entry point. Consumers who only want reports never import `plugin`
+or `analyzer`. The flip side is deliberate: nothing inside `internal/` can
+be reused by third parties, and any capability worth exposing must be
+surfaced through the facade or the lint packages.

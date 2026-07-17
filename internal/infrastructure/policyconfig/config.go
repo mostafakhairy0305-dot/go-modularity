@@ -15,6 +15,18 @@ import (
 // FileName is the conventional policy config file name.
 const FileName = ".modularity.yml"
 
+// documentDecoder is the narrow YAML-decoding behavior needed after a policy
+// file has been opened. Keeping file access separate from document decoding
+// makes the parser reusable with any compatible decoder.
+type documentDecoder interface {
+	// KnownFields enables rejection of unknown fields in typed YAML mappings.
+	KnownFields(bool)
+	// Decode reads the next YAML document into value.
+	Decode(value any) error
+}
+
+var _ documentDecoder = (*yaml.Decoder)(nil)
+
 // Discover reports the policy config path in dir, if a regular file exists.
 // An empty dir means the current working directory.
 func Discover(dir string) (string, bool) {
@@ -36,13 +48,33 @@ func Discover(dir string) (string, bool) {
 // unsupported versions, and malformed YAML are errors, each prefixed with the
 // file path.
 func Load(path string) (domain.Policy, error) {
-	file, err := os.Open(path)
+	dir, name := filepath.Split(path)
+	if dir == "" {
+		dir = "."
+	}
+
+	if name == "" {
+		return domain.Policy{}, fmt.Errorf("%s: path is a directory", path)
+	}
+
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return domain.Policy{}, err
+	}
+	defer func() { _ = root.Close() }()
+
+	file, err := root.Open(name)
 	if err != nil {
 		return domain.Policy{}, err
 	}
 	defer func() { _ = file.Close() }()
 
-	decoder := yaml.NewDecoder(file)
+	return decodePolicy(path, yaml.NewDecoder(file))
+}
+
+// decodePolicy decodes and validates one policy document from an already-open
+// source. path is used only to qualify user-facing errors.
+func decodePolicy(path string, decoder documentDecoder) (domain.Policy, error) {
 	decoder.KnownFields(true)
 
 	var doc fileDTO

@@ -9,10 +9,18 @@ import (
 // Result re-exports the domain result for consumers of the feature.
 type Result = domain.Result
 
+// Calculator is the reusability application boundary consumed by analysis
+// pipelines. Implementations evaluate CBO and reusability for one type.
+type Calculator interface {
+	ComputeForType(*typefacts.TypeFacts, metrics.MetricResult, metrics.MetricResult) Result
+}
+
 // Service evaluates the reusability index with a fixed weight set.
 type Service struct {
 	weights metrics.ReusabilityWeights
 }
+
+var _ Calculator = (*Service)(nil)
 
 // NewService validates the weights and returns a reusability evaluator.
 // Zero-value weights select the defaults.

@@ -2,7 +2,6 @@ package application
 
 import (
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -94,7 +93,7 @@ func marshalDocs(toolVersion string) ([]byte, error) {
 		}
 	}
 
-	return json.Marshal(out)
+	return jsonMarshal(out)
 }
 
 // renderDocs writes the standalone metrics guide page: the embedded guide

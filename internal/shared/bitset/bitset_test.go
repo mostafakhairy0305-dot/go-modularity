@@ -86,4 +86,8 @@ func TestFieldSetSmallView(t *testing.T) {
 	if Intersects(nilSet, a) {
 		t.Fatal("nil set intersects")
 	}
+
+	if clone := Clone(FieldSet{}); Count(clone) != 0 || Contains(clone, 0) {
+		t.Fatal("Clone of empty FieldSet must stay empty")
+	}
 }
