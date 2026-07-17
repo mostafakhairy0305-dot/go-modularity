@@ -2,7 +2,7 @@ source:
     repository: mostafakhairy0305-dot/TaskOtter-store
     requested_version: v0.0.0
     source_ref: refs/tags/v0.0.0
-    resolved_commit: 761fe2915f5c0527a20bbbf8159e9aa3b1e201a7
+    resolved_commit: 4965c9e6659e1d6225fbe2cfadb3a5ae31a47a02
     default_branch: main
 configuration:
     target_folder: taskfiles
@@ -55,12 +55,12 @@ managed_files:
       destination_module: actionlint
       source_path: taskfiles/actionlint/README.md
       path: taskfiles/actionlint/README.md
-      sha256: 39cbde1cfea24597cb997c550e136b6b02faaedd88e0e3c840905108b411e338
+      sha256: 659ce2bbbda865a04218e06d8afa269c460d71087d9e6ffecf8d39e235d785d7
     - source_module: actionlint
       destination_module: actionlint
       source_path: taskfiles/actionlint/Taskfile.yml
       path: taskfiles/actionlint/Taskfile.yml
-      sha256: b7cff173941cb5125e188e7121290f128e0eea164499f4af8a6ce60c7a8bda39
+      sha256: 0e7865891ecbf8efda29c3aa27d673fc5b3d97dbe261967ddd120198ebe95f68
     - source_module: adrs
       destination_module: adrs
       source_path: taskfiles/adrs/README.md
@@ -85,12 +85,12 @@ managed_files:
       destination_module: go
       source_path: taskfiles/go/README.md
       path: taskfiles/go/README.md
-      sha256: 8286280ae593972209ad192594b4dc45bf4e999ace5fb9c4bbc99cf8f1f89912
+      sha256: de65f4ce5fbd8c16a86c61aec60e5134b7d4cbd61939d82385c68ce41dcdb1d9
     - source_module: go
       destination_module: go
       source_path: taskfiles/go/Taskfile.yml
       path: taskfiles/go/Taskfile.yml
-      sha256: 45d795203bfd474354a7e67c4a872dc3c767a2f0dc506c8534f6185e7021d4a9
+      sha256: 7f162431d50728de81ae0d3026bbbde7bbed484e67278aff37e5883163f27ade
     - source_module: staticcheck
       destination_module: staticcheck
       source_path: taskfiles/staticcheck/README.md
@@ -125,9 +125,9 @@ managed_files:
       destination_module: zizmor
       source_path: taskfiles/zizmor/README.md
       path: taskfiles/zizmor/README.md
-      sha256: eebd4e956e9217de172fa60fde263d36eb81225a73659e88c2651f831ab74b2e
+      sha256: 0f992c3a67e80a2da7977e5978ae73e48686fc75e9f921f257271eac82cfab86
     - source_module: zizmor
       destination_module: zizmor
       source_path: taskfiles/zizmor/Taskfile.yml
       path: taskfiles/zizmor/Taskfile.yml
-      sha256: f4e1ae862dd35d9c976debab2ecf6bdf903cb85019ee5316c9cde9cc0d074e6e
+      sha256: 54c2fa1cfb88275866b0da6959f57e6c34366840328d23b212d51b73d15b6aa8
