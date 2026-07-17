@@ -21,7 +21,11 @@ func writeModule(t *testing.T, files map[string]string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/cov\n\ngo 1.22\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, "go.mod"),
+		[]byte("module example.com/cov\n\ngo 1.22\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 	for name, content := range files {
@@ -212,14 +216,24 @@ func TestLoadPackagesSeamErrors(t *testing.T) {
 	packagesLoad = func(*packages.Config, ...string) ([]*packages.Package, error) {
 		return nil, sentinel
 	}
-	if _, err := loadPackages(context.Background(), outbound.FactOptions{Patterns: []string{"./"}}); !errors.Is(err, sentinel) {
+	if _, err := loadPackages(
+		context.Background(),
+		outbound.FactOptions{Patterns: []string{"./"}},
+	); !errors.Is(
+		err,
+		sentinel,
+	) {
 		t.Fatalf("load error = %v", err)
 	}
 
 	packagesLoad = func(*packages.Config, ...string) ([]*packages.Package, error) {
 		return nil, nil
 	}
-	if _, err := loadPackages(context.Background(), outbound.FactOptions{Patterns: []string{"./x"}}); err == nil || !strings.Contains(err.Error(), "no packages matched") {
+	if _, err := loadPackages(
+		context.Background(),
+		outbound.FactOptions{Patterns: []string{"./x"}},
+	); err == nil ||
+		!strings.Contains(err.Error(), "no packages matched") {
 		t.Fatalf("empty load = %v", err)
 	}
 
@@ -246,7 +260,12 @@ func TestExtractAllWorkerError(t *testing.T) {
 	}
 
 	pkg := healthy("m/a", "a.go")
-	_, err := extractAll(context.Background(), []*packages.Package{pkg}, outbound.FactOptions{}, "m")
+	_, err := extractAll(
+		context.Background(),
+		[]*packages.Package{pkg},
+		outbound.FactOptions{},
+		"m",
+	)
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("extractAll = %v", err)
 	}

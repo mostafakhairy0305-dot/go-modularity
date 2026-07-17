@@ -42,7 +42,10 @@ var _ outbound.FactSource = (*Loader)(nil)
 
 // Load loads the requested patterns once, deduplicates test variants, and
 // extracts per-package facts with bounded package-level concurrency.
-func (l *Loader) Load(ctx context.Context, opts outbound.FactOptions) (string, []domain.PackageExtract, error) {
+func (l *Loader) Load(
+	ctx context.Context,
+	opts outbound.FactOptions,
+) (string, []domain.PackageExtract, error) {
 	return load(ctx, opts)
 }
 
@@ -105,7 +108,12 @@ func loadPackages(ctx context.Context, opts outbound.FactOptions) ([]*packages.P
 
 // extractAll extracts per-package facts with bounded concurrency, releasing
 // each package's compiler data as soon as its facts exist.
-func extractAll(ctx context.Context, pkgs []*packages.Package, opts outbound.FactOptions, modulePath string) ([]domain.PackageExtract, error) {
+func extractAll(
+	ctx context.Context,
+	pkgs []*packages.Package,
+	opts outbound.FactOptions,
+	modulePath string,
+) ([]domain.PackageExtract, error) {
 	analyzed := make(map[string]bool, len(pkgs))
 	for _, p := range pkgs {
 		analyzed[p.PkgPath] = true

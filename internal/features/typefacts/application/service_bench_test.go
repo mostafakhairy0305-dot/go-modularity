@@ -24,8 +24,12 @@ func benchExtracts(pkgCount, typesPerPkg int) []domain.PackageExtract {
 		pkgs[p] = domain.PackageExtract{
 			Path:     fmt.Sprintf("example.com/m/pkg%d", p),
 			InModule: true,
-			Imports:  []string{fmt.Sprintf("example.com/m/pkg%d", (p+1)%pkgCount), "fmt", "context"},
-			Types:    types,
+			Imports: []string{
+				fmt.Sprintf("example.com/m/pkg%d", (p+1)%pkgCount),
+				"fmt",
+				"context",
+			},
+			Types: types,
 		}
 	}
 

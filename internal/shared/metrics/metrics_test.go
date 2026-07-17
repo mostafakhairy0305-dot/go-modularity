@@ -187,7 +187,10 @@ func TestReusabilityZeroWeightApplicable(t *testing.T) {
 }
 
 func TestReusabilityComponents(t *testing.T) {
-	if c := CohesionComponent(LCOM96b(3, 3, 3)); !c.Applicable || math.Abs(c.Value-1.0/3) > epsilon {
+	if c := CohesionComponent(
+		LCOM96b(3, 3, 3),
+	); !c.Applicable ||
+		math.Abs(c.Value-1.0/3) > epsilon {
 		t.Fatalf("cohesion component = %+v", c)
 	}
 

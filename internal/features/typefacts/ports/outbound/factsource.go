@@ -31,5 +31,8 @@ type FactSource interface {
 	// Load returns the main module path (empty when unknown) and one
 	// PackageExtract per analyzed package, honoring the ordering contract
 	// documented on domain.PackageExtract.
-	Load(ctx context.Context, opts FactOptions) (modulePath string, packages []domain.PackageExtract, err error)
+	Load(
+		ctx context.Context,
+		opts FactOptions,
+	) (modulePath string, packages []domain.PackageExtract, err error)
 }

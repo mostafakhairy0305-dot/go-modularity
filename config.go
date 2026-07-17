@@ -176,13 +176,19 @@ func validateConfig(c Config) error {
 	switch c.DependencyScope {
 	case DependencyScopeProject, DependencyScopeModule, DependencyScopeAll:
 	default:
-		return fmt.Errorf("invalid dependency scope %q (want project, module, or all)", c.DependencyScope)
+		return fmt.Errorf(
+			"invalid dependency scope %q (want project, module, or all)",
+			c.DependencyScope,
+		)
 	}
 
 	switch c.FieldUsageMode {
 	case FieldUsageDirect, FieldUsageTransitive:
 	default:
-		return fmt.Errorf("invalid field usage mode %q (want direct or transitive)", c.FieldUsageMode)
+		return fmt.Errorf(
+			"invalid field usage mode %q (want direct or transitive)",
+			c.FieldUsageMode,
+		)
 	}
 
 	known := make(map[MetricName]bool)

@@ -52,9 +52,16 @@ type MethodFacts struct {
 
 // String summarizes the method facts for debugging.
 func (m *MethodFacts) String() string {
-	return fmt.Sprintf("method %q (exported %v) at %v: uses %d fields, %d param types, branches %+v, calls %v",
-		m.Name, m.Exported, m.Pos, bitset.Count(m.FieldsUsed),
-		len(m.ParamTypeKeys), m.Branches, m.CalledSiblings)
+	return fmt.Sprintf(
+		"method %q (exported %v) at %v: uses %d fields, %d param types, branches %+v, calls %v",
+		m.Name,
+		m.Exported,
+		m.Pos,
+		bitset.Count(m.FieldsUsed),
+		len(m.ParamTypeKeys),
+		m.Branches,
+		m.CalledSiblings,
+	)
 }
 
 // BranchStats counts the syntax constructs that increment cyclomatic

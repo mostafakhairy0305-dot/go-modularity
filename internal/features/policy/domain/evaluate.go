@@ -42,10 +42,38 @@ func Evaluate(report gomodularity.Report, policy Policy) []Violation {
 		pkg := &report.Packages[i]
 
 		check(&violations, pkg.Path, "", KeyTypes, float64(len(pkg.Types)), policy.Package.Types)
-		check(&violations, pkg.Path, "", KeyExportedFuncs, float64(pkg.ExportedFuncs), policy.Package.ExportedFuncs)
-		check(&violations, pkg.Path, "", KeyUnexportedFuncs, float64(pkg.UnexportedFuncs), policy.Package.UnexportedFuncs)
-		check(&violations, pkg.Path, "", KeyAfferent, float64(pkg.Afferent), policy.Package.Afferent)
-		check(&violations, pkg.Path, "", KeyEfferent, float64(pkg.Efferent), policy.Package.Efferent)
+		check(
+			&violations,
+			pkg.Path,
+			"",
+			KeyExportedFuncs,
+			float64(pkg.ExportedFuncs),
+			policy.Package.ExportedFuncs,
+		)
+		check(
+			&violations,
+			pkg.Path,
+			"",
+			KeyUnexportedFuncs,
+			float64(pkg.UnexportedFuncs),
+			policy.Package.UnexportedFuncs,
+		)
+		check(
+			&violations,
+			pkg.Path,
+			"",
+			KeyAfferent,
+			float64(pkg.Afferent),
+			policy.Package.Afferent,
+		)
+		check(
+			&violations,
+			pkg.Path,
+			"",
+			KeyEfferent,
+			float64(pkg.Efferent),
+			policy.Package.Efferent,
+		)
 
 		for _, result := range pkg.Metrics {
 			if !result.Applicable {
@@ -60,8 +88,22 @@ func Evaluate(report gomodularity.Report, policy Policy) []Violation {
 		for j := range pkg.Types {
 			typ := &pkg.Types[j]
 
-			check(&violations, pkg.Path, typ.Name, KeyFields, float64(typ.Fields), policy.Type.Fields)
-			check(&violations, pkg.Path, typ.Name, KeyMethods, float64(typ.Methods), policy.Type.Methods)
+			check(
+				&violations,
+				pkg.Path,
+				typ.Name,
+				KeyFields,
+				float64(typ.Fields),
+				policy.Type.Fields,
+			)
+			check(
+				&violations,
+				pkg.Path,
+				typ.Name,
+				KeyMethods,
+				float64(typ.Methods),
+				policy.Type.Methods,
+			)
 
 			for _, result := range typ.Metrics {
 				if !result.Applicable {

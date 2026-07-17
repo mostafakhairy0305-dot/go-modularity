@@ -58,7 +58,10 @@ func (o *overrideList) Set(value string) error {
 // defaults; then the CLI overrides on top (defaults < file < flags). It
 // returns a human-readable source label so the CLI can say which policy ran,
 // and the validated policy.
-func resolvePolicy(configPath string, maxima, minima overrideList) (policydomain.Policy, string, error) {
+func resolvePolicy(
+	configPath string,
+	maxima, minima overrideList,
+) (policydomain.Policy, string, error) {
 	var (
 		policy policydomain.Policy
 		source string
@@ -87,13 +90,23 @@ func resolvePolicy(configPath string, maxima, minima overrideList) (policydomain
 	}
 
 	for _, ov := range maxima.items {
-		if err := policydomain.ApplyOverride(&policy, ov.key, policydomain.ComparatorMax, ov.value); err != nil {
+		if err := policydomain.ApplyOverride(
+			&policy,
+			ov.key,
+			policydomain.ComparatorMax,
+			ov.value,
+		); err != nil {
 			return policydomain.Policy{}, "", err
 		}
 	}
 
 	for _, ov := range minima.items {
-		if err := policydomain.ApplyOverride(&policy, ov.key, policydomain.ComparatorMin, ov.value); err != nil {
+		if err := policydomain.ApplyOverride(
+			&policy,
+			ov.key,
+			policydomain.ComparatorMin,
+			ov.value,
+		); err != nil {
 			return policydomain.Policy{}, "", err
 		}
 	}
@@ -112,7 +125,10 @@ func resolvePolicy(configPath string, maxima, minima overrideList) (policydomain
 // gatedMetrics unions the policy's constrained metrics into the display set so
 // every gated metric is computed and rendered — a metric absent from the
 // report cannot be checked. Base order is preserved; new names are appended.
-func gatedMetrics(base []gomodularity.MetricName, policy policydomain.Policy) []gomodularity.MetricName {
+func gatedMetrics(
+	base []gomodularity.MetricName,
+	policy policydomain.Policy,
+) []gomodularity.MetricName {
 	if len(base) == 0 {
 		base = gomodularity.DefaultMetrics()
 	}

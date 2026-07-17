@@ -6,10 +6,9 @@ import (
 	"go/token"
 	"sync"
 
-	"golang.org/x/tools/go/analysis"
-
 	gomodularity "github.com/mostafakhairy0305-dot/go-modularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
+	"golang.org/x/tools/go/analysis"
 )
 
 // Name is the analyzer and golangci-lint custom linter name.
@@ -52,7 +51,10 @@ type reportAnalyzer interface {
 type analyzeFunc func(context.Context, gomodularity.Config) (gomodularity.Report, error)
 
 // Analyze delegates to the adapted function.
-func (f analyzeFunc) Analyze(ctx context.Context, cfg gomodularity.Config) (gomodularity.Report, error) {
+func (f analyzeFunc) Analyze(
+	ctx context.Context,
+	cfg gomodularity.Config,
+) (gomodularity.Report, error) {
 	return f(ctx, cfg)
 }
 
@@ -98,7 +100,10 @@ func (r *runner) load() {
 		return
 	}
 
-	report, err := r.analyzer.Analyze(context.Background(), r.settings.toConfig(gatedMetrics(policy)))
+	report, err := r.analyzer.Analyze(
+		context.Background(),
+		r.settings.toConfig(gatedMetrics(policy)),
+	)
 	if err != nil {
 		r.err = fmt.Errorf("gomodularity analyze: %w", err)
 

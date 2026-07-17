@@ -125,7 +125,10 @@ func TestabilityComponent(amc MetricResult) ReusabilityComponent {
 // The component is dropped when the type has no exported members.
 func DocumentationComponent(documentedExportedMembers, exportedMembers int) ReusabilityComponent {
 	if exportedMembers == 0 {
-		return ReusabilityComponent{Name: ComponentDocumentation, Reason: "type has no exported members"}
+		return ReusabilityComponent{
+			Name:   ComponentDocumentation,
+			Reason: "type has no exported members",
+		}
 	}
 
 	return ReusabilityComponent{
@@ -191,8 +194,15 @@ func Reusability(
 				"every component dropped: "+strings.Join(details, ", "))
 		}
 
-		return notApplicable(MetricReusability, ScopeType, DefinitionReusability,
-			"the applicable components have zero total weight; dropped: "+strings.Join(details, ", "))
+		return notApplicable(
+			MetricReusability,
+			ScopeType,
+			DefinitionReusability,
+			"the applicable components have zero total weight; dropped: "+strings.Join(
+				details,
+				", ",
+			),
+		)
 	}
 
 	var value float64

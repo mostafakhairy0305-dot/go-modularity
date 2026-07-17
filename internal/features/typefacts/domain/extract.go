@@ -50,10 +50,18 @@ type TypeExtract struct {
 
 // String summarizes the extract for debugging.
 func (t *TypeExtract) String() string {
-	return fmt.Sprintf("type %q (kind %d, exported %v) at %v: %d fields, %d methods, %d refs, %d/%d documented exported members",
-		t.Name, t.Kind, t.Exported, t.Pos,
-		len(t.Fields), len(t.Methods), len(t.ReferencedTypeKeys),
-		t.DocumentedExportedMembers, t.ExportedMembers)
+	return fmt.Sprintf(
+		"type %q (kind %d, exported %v) at %v: %d fields, %d methods, %d refs, %d/%d documented exported members",
+		t.Name,
+		t.Kind,
+		t.Exported,
+		t.Pos,
+		len(t.Fields),
+		len(t.Methods),
+		len(t.ReferencedTypeKeys),
+		t.DocumentedExportedMembers,
+		t.ExportedMembers,
+	)
 }
 
 // TypeKey is the canonical cross-package key of a named type.

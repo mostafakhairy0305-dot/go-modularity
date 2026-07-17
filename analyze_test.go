@@ -78,7 +78,11 @@ func findType(t *testing.T, pkg gomodularity.PackageReport, name string) gomodul
 	return gomodularity.TypeReport{}
 }
 
-func metric(t *testing.T, results []gomodularity.MetricResult, name string) gomodularity.MetricResult {
+func metric(
+	t *testing.T,
+	results []gomodularity.MetricResult,
+	name string,
+) gomodularity.MetricResult {
 	t.Helper()
 
 	for _, r := range results {
@@ -140,7 +144,8 @@ func TestAnalyzeFixtureOrdering(t *testing.T) {
 		}
 	}
 
-	if report.SchemaVersion != gomodularity.SchemaVersion || report.Tool.Name != gomodularity.ToolName {
+	if report.SchemaVersion != gomodularity.SchemaVersion ||
+		report.Tool.Name != gomodularity.ToolName {
 		t.Fatalf("report header = %+v", report)
 	}
 }
@@ -319,7 +324,10 @@ func TestAnalyzeCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	if _, err := gomodularity.Analyze(ctx, gomodularity.Config{Directory: "testdata/fixture"}); err == nil {
+	if _, err := gomodularity.Analyze(
+		ctx,
+		gomodularity.Config{Directory: "testdata/fixture"},
+	); err == nil {
 		t.Fatal("cancelled context accepted")
 	}
 }

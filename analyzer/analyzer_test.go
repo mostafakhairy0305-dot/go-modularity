@@ -44,7 +44,11 @@ func TestRunnerLoadGroupsViolations(t *testing.T) {
 	fixtureDir := filepath.Join(repoRoot(t), "testdata", "fixture")
 	policyPath := filepath.Join(t.TempDir(), "policy.yml")
 
-	if err := os.WriteFile(policyPath, []byte("---\nversion: 1\ntype:\n  methods:\n    max: 0\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		policyPath,
+		[]byte("---\nversion: 1\ntype:\n  methods:\n    max: 0\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 

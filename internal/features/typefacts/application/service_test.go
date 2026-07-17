@@ -63,7 +63,8 @@ func TestAssembleOrderingAndIDs(t *testing.T) {
 
 	// Imports deduplicated, sorted, self-import removed.
 	zeta := facts.Packages[1]
-	if len(zeta.Imports) != 2 || zeta.Imports[0] != "example.com/m/alpha" || zeta.Imports[1] != "fmt" {
+	if len(zeta.Imports) != 2 || zeta.Imports[0] != "example.com/m/alpha" ||
+		zeta.Imports[1] != "fmt" {
 		t.Fatalf("zeta.Imports = %v", zeta.Imports)
 	}
 
@@ -74,23 +75,32 @@ func TestAssembleOrderingAndIDs(t *testing.T) {
 
 type errSource struct{ err error }
 
-func (s errSource) Load(context.Context, outbound.FactOptions) (string, []domain.PackageExtract, error) {
+func (s errSource) Load(
+	context.Context,
+	outbound.FactOptions,
+) (string, []domain.PackageExtract, error) {
 	return "", nil, s.err
 }
 
 func TestCollectPropagatesLoadError(t *testing.T) {
 	sentinel := errors.New("load failed")
-	_, err := NewService(errSource{err: sentinel}).Collect(context.Background(), outbound.FactOptions{})
+	_, err := NewService(
+		errSource{err: sentinel},
+	).Collect(context.Background(), outbound.FactOptions{})
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("Collect error = %v, want sentinel", err)
 	}
 }
 
 func TestResolveKeysAllMissing(t *testing.T) {
-	facts := Assemble("example.com/m", []domain.PackageExtract{{
-		Path:  "example.com/m/p",
-		Types: []domain.TypeExtract{{Name: "T", ReferencedTypeKeys: []string{"example.com/m/other.U"}}},
-	}})
+	facts := Assemble("example.com/m", []domain.PackageExtract{
+		{
+			Path: "example.com/m/p",
+			Types: []domain.TypeExtract{
+				{Name: "T", ReferencedTypeKeys: []string{"example.com/m/other.U"}},
+			},
+		},
+	})
 	if ids := facts.Types[0].ReferencedTypeIDs; ids != nil {
 		t.Fatalf("ReferencedTypeIDs = %v, want nil", ids)
 	}

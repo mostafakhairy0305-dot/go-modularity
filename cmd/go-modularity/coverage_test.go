@@ -30,7 +30,11 @@ func TestOverrideListErrorsAndString(t *testing.T) {
 }
 
 func TestResolvePolicyErrorsAndDiscovery(t *testing.T) {
-	if _, _, err := resolvePolicy(filepath.Join(t.TempDir(), "missing.yml"), overrideList{}, overrideList{}); err == nil {
+	if _, _, err := resolvePolicy(
+		filepath.Join(t.TempDir(), "missing.yml"),
+		overrideList{},
+		overrideList{},
+	); err == nil {
 		t.Fatal("missing explicit policy succeeded")
 	}
 
@@ -44,7 +48,11 @@ func TestResolvePolicyErrorsAndDiscovery(t *testing.T) {
 		t.Fatal("invalid discovered policy succeeded")
 	}
 
-	if err := os.WriteFile(config, []byte("version: 1\npackage:\n  types: 5\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		config,
+		[]byte("version: 1\npackage:\n  types: 5\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 	policy, source, err := resolvePolicy("", overrideList{}, overrideList{})
@@ -118,7 +126,10 @@ func TestMainInvokesExit(t *testing.T) {
 	var code int
 	exitFunc = func(c int) { code = c }
 	analyze = func(context.Context, gomodularity.Config) (gomodularity.Report, error) {
-		return gomodularity.Report{SchemaVersion: "2", Tool: gomodularity.ToolInfo{Name: "go-modularity", Version: "test"}}, nil
+		return gomodularity.Report{
+			SchemaVersion: "2",
+			Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "test"},
+		}, nil
 	}
 	oldArgs := os.Args
 	os.Args = []string{"go-modularity", "--format=text", "./none"}
@@ -185,7 +196,9 @@ func TestRunCPUStopProfileError(t *testing.T) {
 	startCPU = func(string) (func() error, error) {
 		return func() error { return errors.New("stop failed") }, nil
 	}
-	if code := run([]string{"--cpu-profile=" + filepath.Join(t.TempDir(), "cpu.prof"), "./..."}); code != 0 {
+	if code := run(
+		[]string{"--cpu-profile=" + filepath.Join(t.TempDir(), "cpu.prof"), "./..."},
+	); code != 0 {
 		t.Fatalf("exit = %d, want 0 (stop error is logged only)", code)
 	}
 }

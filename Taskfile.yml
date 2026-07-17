@@ -16,7 +16,6 @@ includes:
       GOIMPORTS_VERSION: ""
       GOVULNCHECK_VERSION: ""
       GOSEC_VERSION: ""
-      SPM_GO_VERSION: ""
       GLOBAL_GO_BIN:
         sh: |
           gobin="${GOBIN:-}"

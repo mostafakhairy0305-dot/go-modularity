@@ -19,7 +19,10 @@ type fakeSource struct {
 	pkgs []tfdomain.PackageExtract
 }
 
-func (f fakeSource) Load(context.Context, tfoutbound.FactOptions) (string, []tfdomain.PackageExtract, error) {
+func (f fakeSource) Load(
+	context.Context,
+	tfoutbound.FactOptions,
+) (string, []tfdomain.PackageExtract, error) {
 	return f.mod, f.pkgs, nil
 }
 
@@ -49,14 +52,21 @@ func TestPipelineAnalyzeEndToEnd(t *testing.T) {
 				Path: "example.com/m/a", InModule: true, Imports: []string{"example.com/m/b"},
 				Types: []tfdomain.TypeExtract{
 					{
-						Name: "A", Exported: true, Kind: tfdomain.KindStruct,
-						Methods: []tfdomain.MethodFacts{{Name: "Do", Exported: true, Branches: tfdomain.BranchStats{Ifs: 1}}},
+						Name:     "A",
+						Exported: true,
+						Kind:     tfdomain.KindStruct,
+						Methods: []tfdomain.MethodFacts{
+							{Name: "Do", Exported: true, Branches: tfdomain.BranchStats{Ifs: 1}},
+						},
 					},
 				},
 			},
 			{
-				Path: "example.com/m/b", InModule: true,
-				Types: []tfdomain.TypeExtract{{Name: "B", Exported: true, Kind: tfdomain.KindInterface}},
+				Path:     "example.com/m/b",
+				InModule: true,
+				Types: []tfdomain.TypeExtract{
+					{Name: "B", Exported: true, Kind: tfdomain.KindInterface},
+				},
 			},
 		},
 	}
@@ -111,7 +121,11 @@ func TestPipelineAnalyzeEndToEnd(t *testing.T) {
 	}
 
 	// b: all-interface → A=1.
-	if got := findMetric(t, result.Packages[1].Metrics, metrics.MetricAbstractness); got.Value != 1 {
+	if got := findMetric(
+		t,
+		result.Packages[1].Metrics,
+		metrics.MetricAbstractness,
+	); got.Value != 1 {
 		t.Errorf("b abstractness = %v, want 1", got.Value)
 	}
 }
@@ -124,7 +138,10 @@ func TestPipelineCancelled(t *testing.T) {
 	cancel()
 
 	pipeline := projectanalysis.NewPipeline(typefacts.NewService(fakeSource{mod: "m"}))
-	if _, err := pipeline.Analyze(ctx, inbound.Options{Patterns: []string{"./..."}, Weights: metrics.DefaultReusabilityWeights()}); err == nil {
+	if _, err := pipeline.Analyze(
+		ctx,
+		inbound.Options{Patterns: []string{"./..."}, Weights: metrics.DefaultReusabilityWeights()},
+	); err == nil {
 		t.Fatal("cancelled context should abort")
 	}
 }

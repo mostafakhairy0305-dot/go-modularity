@@ -56,7 +56,10 @@ func (s Settings) validate() error {
 		gomodularity.DependencyScopeModule,
 		gomodularity.DependencyScopeAll:
 	default:
-		return fmt.Errorf("invalid dependency-scope %q (want project, module, or all)", s.DependencyScope)
+		return fmt.Errorf(
+			"invalid dependency-scope %q (want project, module, or all)",
+			s.DependencyScope,
+		)
 	}
 
 	switch gomodularity.FieldUsageMode(s.FieldUsage) {

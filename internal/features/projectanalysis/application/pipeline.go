@@ -7,12 +7,11 @@ import (
 	archdomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/architecture/domain"
 	cohesion "github.com/mostafakhairy0305-dot/go-modularity/internal/features/cohesion/application"
 	complexity "github.com/mostafakhairy0305-dot/go-modularity/internal/features/complexity/application"
+	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/projectanalysis/ports/inbound"
 	reusability "github.com/mostafakhairy0305-dot/go-modularity/internal/features/reusability/application"
 	typefacts "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/application"
 	tfdomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
 	tfoutbound "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/ports/outbound"
-
-	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/projectanalysis/ports/inbound"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/metrics"
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/workerpool"
 )
@@ -74,7 +73,16 @@ func assembleResult(
 	workers := workerpool.Workers(opts.Workers, len(facts.Packages))
 
 	err := runWorkers(ctx, workers, len(facts.Packages), func(i int) error {
-		packageResults[i] = analyzePackage(facts, i, graph.Coupling(i), archResults, reusabilityCalculator, display, compute, opts)
+		packageResults[i] = analyzePackage(
+			facts,
+			i,
+			graph.Coupling(i),
+			archResults,
+			reusabilityCalculator,
+			display,
+			compute,
+			opts,
+		)
 
 		return nil
 	})
@@ -87,7 +95,10 @@ func assembleResult(
 
 // newReusabilityCalculator builds the reusability calculator when the compute
 // set needs it; a nil calculator disables per-type reusability and CBO.
-func newReusabilityCalculator(compute map[string]bool, weights metrics.ReusabilityWeights) (reusability.Calculator, error) {
+func newReusabilityCalculator(
+	compute map[string]bool,
+	weights metrics.ReusabilityWeights,
+) (reusability.Calculator, error) {
 	if !compute[metrics.MetricReusability] && !compute[metrics.MetricCBO] {
 		return nil, nil
 	}
@@ -155,7 +166,12 @@ func analyzePackage(
 	result.Types = make([]inbound.TypeResult, 0, len(pkg.TypeIDs))
 	for _, typeID := range pkg.TypeIDs {
 		result.Types = append(result.Types, analyzeType(
-			&facts.Types[typeID], reusabilityCalculator, display, needComplexity, needCohesion, opts,
+			&facts.Types[typeID],
+			reusabilityCalculator,
+			display,
+			needComplexity,
+			needCohesion,
+			opts,
 		))
 	}
 

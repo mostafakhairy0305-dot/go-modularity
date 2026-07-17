@@ -39,7 +39,9 @@ func TestServiceEndToEnd(t *testing.T) {
 func TestNewServiceRejectsNegativeWeight(t *testing.T) {
 	t.Parallel()
 
-	if _, err := reusability.NewService(metrics.ReusabilityWeights{Cohesion: -0.5, Coupling: 1}); err == nil {
+	if _, err := reusability.NewService(
+		metrics.ReusabilityWeights{Cohesion: -0.5, Coupling: 1},
+	); err == nil {
 		t.Fatal("negative weight accepted")
 	}
 }

@@ -10,7 +10,12 @@ import (
 )
 
 func typeMetric(name string, value float64) metrics.MetricResult {
-	return metrics.MetricResult{Name: name, Scope: metrics.ScopeType, Value: value, Applicable: true}
+	return metrics.MetricResult{
+		Name:       name,
+		Scope:      metrics.ScopeType,
+		Value:      value,
+		Applicable: true,
+	}
 }
 
 func tableReport() gomodularity.Report {
@@ -21,8 +26,18 @@ func tableReport() gomodularity.Report {
 		Packages: []gomodularity.PackageReport{{
 			Path: "example.com/mod",
 			Metrics: []metrics.MetricResult{
-				{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 0.25, Applicable: true},
-				{Name: metrics.MetricDistance, Scope: metrics.ScopePackage, Value: 0.15, Applicable: true},
+				{
+					Name:       metrics.MetricAbstractness,
+					Scope:      metrics.ScopePackage,
+					Value:      0.25,
+					Applicable: true,
+				},
+				{
+					Name:       metrics.MetricDistance,
+					Scope:      metrics.ScopePackage,
+					Value:      0.15,
+					Applicable: true,
+				},
 			},
 			Types: []gomodularity.TypeReport{
 				{Name: "Cart", Metrics: []metrics.MetricResult{
@@ -31,7 +46,12 @@ func tableReport() gomodularity.Report {
 				}},
 				{Name: "Order", Metrics: []metrics.MetricResult{
 					typeMetric(metrics.MetricAMC, 6),
-					{Name: metrics.MetricTCC, Scope: metrics.ScopeType, Applicable: false, Reason: "fewer than two methods"},
+					{
+						Name:       metrics.MetricTCC,
+						Scope:      metrics.ScopeType,
+						Applicable: false,
+						Reason:     "fewer than two methods",
+					},
 				}},
 			},
 		}},
@@ -71,15 +91,29 @@ func TestTextTreeGroupsPackagesUnderSharedPath(t *testing.T) {
 	report := tableReport()
 	report.Packages = []gomodularity.PackageReport{
 		{
-			Path:    "example.com/mod/internal/a",
-			Metrics: []metrics.MetricResult{{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 1, Applicable: true}},
+			Path: "example.com/mod/internal/a",
+			Metrics: []metrics.MetricResult{
+				{
+					Name:       metrics.MetricAbstractness,
+					Scope:      metrics.ScopePackage,
+					Value:      1,
+					Applicable: true,
+				},
+			},
 			Types: []gomodularity.TypeReport{
 				{Name: "T1", Metrics: []metrics.MetricResult{typeMetric(metrics.MetricTCC, 0.5)}},
 			},
 		},
 		{
-			Path:    "example.com/mod/internal/b/deep",
-			Metrics: []metrics.MetricResult{{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 0, Applicable: true}},
+			Path: "example.com/mod/internal/b/deep",
+			Metrics: []metrics.MetricResult{
+				{
+					Name:       metrics.MetricAbstractness,
+					Scope:      metrics.ScopePackage,
+					Value:      0,
+					Applicable: true,
+				},
+			},
 			Types: []gomodularity.TypeReport{
 				{Name: "T2", Metrics: []metrics.MetricResult{typeMetric(metrics.MetricTCC, 1)}},
 			},
@@ -154,7 +188,8 @@ func TestTextColorAppliesQualityAndBold(t *testing.T) {
 		t.Errorf("low distance not green:\n%q", got)
 	}
 	// Abstractness has no quality direction: never colored.
-	if strings.Contains(got, ansiGreen+"0.25") || strings.Contains(got, ansiRed+"0.25") || strings.Contains(got, ansiYellow+"0.25") {
+	if strings.Contains(got, ansiGreen+"0.25") || strings.Contains(got, ansiRed+"0.25") ||
+		strings.Contains(got, ansiYellow+"0.25") {
 		t.Errorf("abstractness was quality-colored:\n%q", got)
 	}
 	// Tree glyphs stay unstyled so the branches read cleanly.
@@ -168,7 +203,9 @@ func TestTextSingleTypeLeavesUnboundedPlain(t *testing.T) {
 	report.Packages[0].Types = report.Packages[0].Types[:1]
 
 	got := Text(report, TextOptions{Color: true})
-	if strings.Contains(got, ansiGreen+"2.00"+ansiReset) || strings.Contains(got, ansiRed+"2.00"+ansiReset) || strings.Contains(got, ansiYellow+"2.00"+ansiReset) {
+	if strings.Contains(got, ansiGreen+"2.00"+ansiReset) ||
+		strings.Contains(got, ansiRed+"2.00"+ansiReset) ||
+		strings.Contains(got, ansiYellow+"2.00"+ansiReset) {
 		t.Errorf("lone AMC value was relatively colored:\n%q", got)
 	}
 }

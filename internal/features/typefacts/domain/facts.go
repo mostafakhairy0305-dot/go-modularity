@@ -36,7 +36,12 @@ type ProjectFacts struct {
 
 // String summarizes the fact set for debugging.
 func (f *ProjectFacts) String() string {
-	return fmt.Sprintf("module %q: %d packages, %d types", f.ModulePath, len(f.Packages), len(f.Types))
+	return fmt.Sprintf(
+		"module %q: %d packages, %d types",
+		f.ModulePath,
+		len(f.Packages),
+		len(f.Types),
+	)
 }
 
 // PackageFacts describes one analyzed package.
@@ -97,10 +102,20 @@ type TypeFacts struct {
 
 // String summarizes the type facts for debugging.
 func (t *TypeFacts) String() string {
-	return fmt.Sprintf("type %d %q (package %d, kind %d, exported %v) at %v: %d fields, %d methods, %d refs, %d/%d documented exported members",
-		t.ID, t.Name, t.PackageID, t.Kind, t.Exported, t.Pos,
-		len(t.Fields), len(t.Methods), len(t.ReferencedTypeIDs),
-		t.DocumentedExportedMembers, t.ExportedMembers)
+	return fmt.Sprintf(
+		"type %d %q (package %d, kind %d, exported %v) at %v: %d fields, %d methods, %d refs, %d/%d documented exported members",
+		t.ID,
+		t.Name,
+		t.PackageID,
+		t.Kind,
+		t.Exported,
+		t.Pos,
+		len(t.Fields),
+		len(t.Methods),
+		len(t.ReferencedTypeIDs),
+		t.DocumentedExportedMembers,
+		t.ExportedMembers,
+	)
 }
 
 // FieldFacts describes one struct field slot.

@@ -200,7 +200,9 @@ func chdirFixture(t *testing.T) {
 func TestRunCheckFailsExitsThree(t *testing.T) {
 	chdirFixture(t)
 
-	if code := main.Run([]string{"--max", "types=0", "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."}); code != 3 {
+	if code := main.Run(
+		[]string{"--max", "types=0", "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."},
+	); code != 3 {
 		t.Fatalf("exit code = %d, want 3", code)
 	}
 }
@@ -229,7 +231,9 @@ metrics:
 		t.Fatal(err)
 	}
 
-	if code := main.Run([]string{"--config", config, "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."}); code != 0 {
+	if code := main.Run(
+		[]string{"--config", config, "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."},
+	); code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 }

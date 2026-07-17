@@ -18,7 +18,11 @@ func TestTypeKey(t *testing.T) {
 func TestStringers(t *testing.T) {
 	t.Parallel()
 
-	pf := &ProjectFacts{ModulePath: "m", Packages: make([]PackageFacts, 2), Types: make([]TypeFacts, 3)}
+	pf := &ProjectFacts{
+		ModulePath: "m",
+		Packages:   make([]PackageFacts, 2),
+		Types:      make([]TypeFacts, 3),
+	}
 	if s := pf.String(); !strings.Contains(s, "2 packages") || !strings.Contains(s, "3 types") {
 		t.Errorf("ProjectFacts.String = %q", s)
 	}

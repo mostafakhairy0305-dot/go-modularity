@@ -33,13 +33,22 @@ func TestTextAndCSVRendering(t *testing.T) {
 		SchemaVersion: "1",
 		Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "t"},
 		Module:        "example.com/m",
-		Packages: []gomodularity.PackageReport{{
-			Path:    "example.com/m/a",
-			Metrics: []metrics.MetricResult{{Name: "abstractness", Scope: metrics.ScopePackage, Value: 0.5, Applicable: true}},
-			Types: []gomodularity.TypeReport{{Name: "A", Metrics: []metrics.MetricResult{
-				{Name: "amc", Scope: metrics.ScopeType, Value: 2, Applicable: true},
-			}}},
-		}},
+		Packages: []gomodularity.PackageReport{
+			{
+				Path: "example.com/m/a",
+				Metrics: []metrics.MetricResult{
+					{
+						Name:       "abstractness",
+						Scope:      metrics.ScopePackage,
+						Value:      0.5,
+						Applicable: true,
+					},
+				},
+				Types: []gomodularity.TypeReport{{Name: "A", Metrics: []metrics.MetricResult{
+					{Name: "amc", Scope: metrics.ScopeType, Value: 2, Applicable: true},
+				}}},
+			},
+		},
 	}
 
 	text := reporting.Text(rep, reporting.TextOptions{})

@@ -48,7 +48,8 @@ func TestCountBranchAdditionalConstructs(t *testing.T) {
 		countBranch(node, &branches)
 	}
 
-	if branches.Ranges != 1 || branches.Cases != 1 || branches.SelectComms != 1 || branches.LogicalOps != 1 {
+	if branches.Ranges != 1 || branches.Cases != 1 || branches.SelectComms != 1 ||
+		branches.LogicalOps != 1 {
 		t.Fatalf("branch counts = %+v", branches)
 	}
 }

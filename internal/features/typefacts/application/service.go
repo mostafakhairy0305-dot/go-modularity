@@ -27,7 +27,10 @@ func NewService(source outbound.FactSource) *Service {
 }
 
 // Collect loads the project once and returns its assembled facts.
-func (s *Service) Collect(ctx context.Context, opts outbound.FactOptions) (domain.ProjectFacts, error) {
+func (s *Service) Collect(
+	ctx context.Context,
+	opts outbound.FactOptions,
+) (domain.ProjectFacts, error) {
 	modulePath, extracts, err := s.source.Load(ctx, opts)
 	if err != nil {
 		return domain.ProjectFacts{}, err

@@ -59,34 +59,81 @@ func run(args []string) int {
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: go-modularity [flags] [patterns...]\n\n")
 		fs.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nFor an illustrated guide to every reported metric:\n  go-modularity --help --web\n")
+		fmt.Fprintf(
+			os.Stderr,
+			"\nFor an illustrated guide to every reported metric:\n  go-modularity --help --web\n",
+		)
 	}
 
 	var (
-		format          = fs.String("format", "text", "report format: text, json, csv, or web")
-		webReport       = fs.Bool("web", false, "shorthand for -format=web: write a self-contained HTML report and open it")
-		output          = fs.String("output", "", "write the report to this file instead of stdout")
-		explain         = fs.Bool("explain", false, "include reasons for n/a and dropped-component metrics in the text report")
-		metricList      = fs.String("metrics", "", "comma-separated metrics to report (default: all except cbo)")
-		workers         = fs.Int("workers", 0, "concurrent package workers (0 = min(GOMAXPROCS, packages))")
-		fieldUsage      = fs.String("field-usage", "direct", "field usage resolution: direct or transitive")
-		dependencyScope = fs.String("dependency-scope", "module", "dependency scope: project, module, or all")
+		format    = fs.String("format", "text", "report format: text, json, csv, or web")
+		webReport = fs.Bool(
+			"web",
+			false,
+			"shorthand for -format=web: write a self-contained HTML report and open it",
+		)
+		output  = fs.String("output", "", "write the report to this file instead of stdout")
+		explain = fs.Bool(
+			"explain",
+			false,
+			"include reasons for n/a and dropped-component metrics in the text report",
+		)
+		metricList = fs.String(
+			"metrics",
+			"",
+			"comma-separated metrics to report (default: all except cbo)",
+		)
+		workers = fs.Int(
+			"workers",
+			0,
+			"concurrent package workers (0 = min(GOMAXPROCS, packages))",
+		)
+		fieldUsage = fs.String(
+			"field-usage",
+			"direct",
+			"field usage resolution: direct or transitive",
+		)
+		dependencyScope = fs.String(
+			"dependency-scope",
+			"module",
+			"dependency scope: project, module, or all",
+		)
 		buildTags       = fs.String("build-tags", "", "comma-separated build tags")
 		includeTests    = fs.Bool("tests", false, "include test files and test packages")
 		generated       = fs.Bool("generated", false, "include generated files")
-		continueOnError = fs.Bool("continue-on-error", false, "skip packages that fail to load or type-check")
-		cpuProfile      = fs.String("cpu-profile", "", "write a CPU profile to this file")
-		memoryProfile   = fs.String("memory-profile", "", "write a memory profile to this file")
-		showVersion     = fs.Bool("version", false, "print the version and exit")
-		verbose         = fs.Bool("verbose", false, "verbose logging to stderr")
-		check           = fs.Bool("check", false, "enforce a modularity policy and exit 3 on violations")
-		configPath      = fs.String("config", "", "policy config file (implies -check; default: auto-discover .modularity.yml)")
+		continueOnError = fs.Bool(
+			"continue-on-error",
+			false,
+			"skip packages that fail to load or type-check",
+		)
+		cpuProfile    = fs.String("cpu-profile", "", "write a CPU profile to this file")
+		memoryProfile = fs.String("memory-profile", "", "write a memory profile to this file")
+		showVersion   = fs.Bool("version", false, "print the version and exit")
+		verbose       = fs.Bool("verbose", false, "verbose logging to stderr")
+		check         = fs.Bool(
+			"check",
+			false,
+			"enforce a modularity policy and exit 3 on violations",
+		)
+		configPath = fs.String(
+			"config",
+			"",
+			"policy config file (implies -check; default: auto-discover .modularity.yml)",
+		)
 	)
 
 	var maxOverrides, minOverrides overrideList
 
-	fs.Var(&maxOverrides, "max", "policy upper-bound override key=value (repeatable; metric keys may be scoped as type.amc/package.distance; implies -check)")
-	fs.Var(&minOverrides, "min", "policy lower-bound override key=value (repeatable; metric keys may be scoped as type.reusability; implies -check)")
+	fs.Var(
+		&maxOverrides,
+		"max",
+		"policy upper-bound override key=value (repeatable; metric keys may be scoped as type.amc/package.distance; implies -check)",
+	)
+	fs.Var(
+		&minOverrides,
+		"min",
+		"policy lower-bound override key=value (repeatable; metric keys may be scoped as type.reusability; implies -check)",
+	)
 	if err := fs.Parse(args); err != nil {
 		// --help --web (either order) opens the metrics guide instead of
 		// failing; parsing aborts at --help, so the raw args are scanned.
@@ -148,7 +195,8 @@ func run(args []string) int {
 	// A policy gate runs only when explicitly requested: -check, an explicit
 	// -config, or any -max / -min override. Resolving it up front lets gated
 	// metrics join the display set so they are computed and rendered.
-	gating := *check || *configPath != "" || len(maxOverrides.items) > 0 || len(minOverrides.items) > 0
+	gating := *check || *configPath != "" || len(maxOverrides.items) > 0 ||
+		len(minOverrides.items) > 0
 
 	var (
 		policy       policydomain.Policy
@@ -251,7 +299,13 @@ func run(args []string) int {
 	if gating {
 		violations := policydomain.Evaluate(report, policy)
 		if len(violations) > 0 {
-			logger.Error("policy check failed", "source", policySource, "violations", len(violations))
+			logger.Error(
+				"policy check failed",
+				"source",
+				policySource,
+				"violations",
+				len(violations),
+			)
 			fmt.Fprint(os.Stderr, policydomain.FormatViolations(violations))
 
 			return 3

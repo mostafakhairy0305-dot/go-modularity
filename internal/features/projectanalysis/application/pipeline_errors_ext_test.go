@@ -15,7 +15,10 @@ import (
 
 type errSource struct{ err error }
 
-func (e errSource) Load(context.Context, tfoutbound.FactOptions) (string, []tfdomain.PackageExtract, error) {
+func (e errSource) Load(
+	context.Context,
+	tfoutbound.FactOptions,
+) (string, []tfdomain.PackageExtract, error) {
 	return "", nil, e.err
 }
 

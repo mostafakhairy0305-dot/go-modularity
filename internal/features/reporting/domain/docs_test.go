@@ -11,7 +11,12 @@ func TestMetricDocsDirectionMatchesQuality(t *testing.T) {
 	for _, d := range MetricDocs() {
 		if d.Scope == DocScopeStructural {
 			if d.Direction != DirectionNeutral {
-				t.Errorf("%s: structural direction = %q, want %q", d.Name, d.Direction, DirectionNeutral)
+				t.Errorf(
+					"%s: structural direction = %q, want %q",
+					d.Name,
+					d.Direction,
+					DirectionNeutral,
+				)
 			}
 
 			continue
@@ -24,7 +29,12 @@ func TestMetricDocsDirectionMatchesQuality(t *testing.T) {
 		q, colored := qualityByMetric[d.Name]
 		if !colored {
 			if d.Direction != DirectionNeutral {
-				t.Errorf("%s: uncolored metric direction = %q, want %q", d.Name, d.Direction, DirectionNeutral)
+				t.Errorf(
+					"%s: uncolored metric direction = %q, want %q",
+					d.Name,
+					d.Direction,
+					DirectionNeutral,
+				)
 			}
 
 			continue

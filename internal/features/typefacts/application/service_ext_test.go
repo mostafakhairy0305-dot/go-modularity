@@ -11,7 +11,10 @@ import (
 
 type fakeSource struct{}
 
-func (fakeSource) Load(context.Context, tfoutbound.FactOptions) (string, []tfdomain.PackageExtract, error) {
+func (fakeSource) Load(
+	context.Context,
+	tfoutbound.FactOptions,
+) (string, []tfdomain.PackageExtract, error) {
 	return "example.com/m", []tfdomain.PackageExtract{
 		{Path: "example.com/m/b", InModule: true, Types: []tfdomain.TypeExtract{{Name: "B"}}},
 		{Path: "example.com/m/a", InModule: true, Types: []tfdomain.TypeExtract{{Name: "A"}}},
@@ -25,7 +28,10 @@ func TestServiceCollect(t *testing.T) {
 
 	svc := typefacts.NewService(fakeSource{})
 
-	facts, err := svc.Collect(context.Background(), tfoutbound.FactOptions{Patterns: []string{"./..."}})
+	facts, err := svc.Collect(
+		context.Background(),
+		tfoutbound.FactOptions{Patterns: []string{"./..."}},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

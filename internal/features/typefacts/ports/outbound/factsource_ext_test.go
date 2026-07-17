@@ -11,7 +11,10 @@ import (
 // fakeSource is an external adapter implementing the outbound port.
 type fakeSource struct{}
 
-func (fakeSource) Load(_ context.Context, opts outbound.FactOptions) (string, []domain.PackageExtract, error) {
+func (fakeSource) Load(
+	_ context.Context,
+	opts outbound.FactOptions,
+) (string, []domain.PackageExtract, error) {
 	return "example.com/m", []domain.PackageExtract{
 		{Path: "example.com/m/a", InModule: true, Types: []domain.TypeExtract{{Name: "A"}}},
 	}, nil

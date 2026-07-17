@@ -12,8 +12,20 @@ import (
 )
 
 func sampleReport() gomodularity.Report {
-	applicable := metrics.MetricResult{Name: "abstractness", Scope: metrics.ScopePackage, Value: 0.5, Applicable: true, Definition: "d"}
-	na := metrics.MetricResult{Name: "amc", Scope: metrics.ScopeType, Applicable: false, Reason: "no methods", Definition: "d"}
+	applicable := metrics.MetricResult{
+		Name:       "abstractness",
+		Scope:      metrics.ScopePackage,
+		Value:      0.5,
+		Applicable: true,
+		Definition: "d",
+	}
+	na := metrics.MetricResult{
+		Name:       "amc",
+		Scope:      metrics.ScopeType,
+		Applicable: false,
+		Reason:     "no methods",
+		Definition: "d",
+	}
 
 	return gomodularity.Report{
 		SchemaVersion: "1",

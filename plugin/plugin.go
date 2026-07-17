@@ -7,9 +7,8 @@ package plugin
 
 import (
 	"github.com/golangci/plugin-module-register/register"
-	"golang.org/x/tools/go/analysis"
-
 	"github.com/mostafakhairy0305-dot/go-modularity/analyzer"
+	"golang.org/x/tools/go/analysis"
 )
 
 func init() {

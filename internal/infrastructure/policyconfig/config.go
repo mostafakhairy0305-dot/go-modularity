@@ -7,9 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.yaml.in/yaml/v4"
-
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
+	"go.yaml.in/yaml/v4"
 )
 
 // FileName is the conventional policy config file name.
@@ -206,7 +205,11 @@ func decodeMappingLimit(l *limitDTO, node *yaml.Node) error {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i].Value
 		if key != "max" && key != "min" {
-			return fmt.Errorf("line %d: unknown limit field %q (want max or min)", node.Content[i].Line, key)
+			return fmt.Errorf(
+				"line %d: unknown limit field %q (want max or min)",
+				node.Content[i].Line,
+				key,
+			)
 		}
 	}
 

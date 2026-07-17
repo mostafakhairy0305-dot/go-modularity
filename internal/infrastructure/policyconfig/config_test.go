@@ -79,13 +79,25 @@ func TestLoadErrors(t *testing.T) {
 		"missing version":        {"package:\n  types: 5\n", "unsupported version"},
 		"unknown structural key": {"version: 1\npackage:\n  bogus: 5\n", "field bogus not found"},
 		"unknown metric":         {"version: 1\nmetrics:\n  nope: { max: 1 }\n", "unknown metric"},
-		"wrong package metric":   {"version: 1\npackage:\n  metrics:\n    amc: { max: 1 }\n", "unknown package metric"},
-		"wrong type metric":      {"version: 1\ntype:\n  metrics:\n    distance: { max: 1 }\n", "unknown type metric"},
-		"unknown limit field":    {"version: 1\nmetrics:\n  amc: { maks: 4 }\n", "unknown limit field"},
-		"empty limit mapping":    {"version: 1\nmetrics:\n  amc: {}\n", "must set max and/or min"},
-		"min over max":           {"version: 1\nmetrics:\n  amc: { min: 5, max: 2 }\n", "min 5 exceeds max 2"},
-		"malformed yaml":         {":\n  - broken\n:::", ""},
-		"empty file":             {"", "config is empty"},
+		"wrong package metric": {
+			"version: 1\npackage:\n  metrics:\n    amc: { max: 1 }\n",
+			"unknown package metric",
+		},
+		"wrong type metric": {
+			"version: 1\ntype:\n  metrics:\n    distance: { max: 1 }\n",
+			"unknown type metric",
+		},
+		"unknown limit field": {
+			"version: 1\nmetrics:\n  amc: { maks: 4 }\n",
+			"unknown limit field",
+		},
+		"empty limit mapping": {"version: 1\nmetrics:\n  amc: {}\n", "must set max and/or min"},
+		"min over max": {
+			"version: 1\nmetrics:\n  amc: { min: 5, max: 2 }\n",
+			"min 5 exceeds max 2",
+		},
+		"malformed yaml": {":\n  - broken\n:::", ""},
+		"empty file":     {"", "config is empty"},
 	}
 
 	for name, tc := range cases {
@@ -121,7 +133,11 @@ func TestDiscover(t *testing.T) {
 		t.Error("discovered a config in an empty dir")
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, policyconfig.FileName), []byte("version: 1\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, policyconfig.FileName),
+		[]byte("version: 1\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 

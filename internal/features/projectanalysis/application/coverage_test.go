@@ -14,13 +14,22 @@ import (
 
 type coverageSource struct{}
 
-func (coverageSource) Load(context.Context, tfoutbound.FactOptions) (string, []tfdomain.PackageExtract, error) {
+func (coverageSource) Load(
+	context.Context,
+	tfoutbound.FactOptions,
+) (string, []tfdomain.PackageExtract, error) {
 	return "example.com/m", []tfdomain.PackageExtract{{
 		Path: "example.com/m/a", InModule: true,
-		Types: []tfdomain.TypeExtract{{
-			Name: "A", Exported: true, Kind: tfdomain.KindStruct,
-			Methods: []tfdomain.MethodFacts{{Name: "Do", Exported: true, Branches: tfdomain.BranchStats{Ifs: 1}}},
-		}},
+		Types: []tfdomain.TypeExtract{
+			{
+				Name:     "A",
+				Exported: true,
+				Kind:     tfdomain.KindStruct,
+				Methods: []tfdomain.MethodFacts{
+					{Name: "Do", Exported: true, Branches: tfdomain.BranchStats{Ifs: 1}},
+				},
+			},
+		},
 	}}, nil
 }
 

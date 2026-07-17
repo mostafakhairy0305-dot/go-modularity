@@ -57,7 +57,12 @@ func TestMetricDocsCoverEveryMetric(t *testing.T) {
 }
 
 // assertMetricDoc checks one computed metric's entry for completeness.
-func assertMetricDoc(t *testing.T, byName map[string]domain.MetricDoc, name string, scope domain.DocScope) {
+func assertMetricDoc(
+	t *testing.T,
+	byName map[string]domain.MetricDoc,
+	name string,
+	scope domain.DocScope,
+) {
 	t.Helper()
 
 	d, ok := byName[name]

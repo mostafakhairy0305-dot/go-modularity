@@ -69,7 +69,11 @@ func extractPackage(pkg *packages.Package, opts extractorOptions) domain.Package
 // countFuncDecls counts the package's declared functions and methods in
 // non-excluded files, split by whether the declared name is exported. A
 // method's export status follows its own name, not its receiver's.
-func countFuncDecls(pkg *packages.Package, includeGenerated bool, generated map[string]bool) (exported, unexported int) {
+func countFuncDecls(
+	pkg *packages.Package,
+	includeGenerated bool,
+	generated map[string]bool,
+) (exported, unexported int) {
 	for _, file := range pkg.Syntax {
 		if !includeGenerated && generated[pkg.Fset.Position(file.Package).Filename] {
 			continue
@@ -94,7 +98,9 @@ func countFuncDecls(pkg *packages.Package, includeGenerated bool, generated map[
 
 // indexSyntax walks the ASTs once, recording generated files, method
 // declarations, and documentation facts.
-func indexSyntax(pkg *packages.Package) (generated map[string]bool, funcDecls map[*types.Func]*ast.FuncDecl, typeDocs map[types.Object]bool, fieldDocs []docRange) {
+func indexSyntax(
+	pkg *packages.Package,
+) (generated map[string]bool, funcDecls map[*types.Func]*ast.FuncDecl, typeDocs map[types.Object]bool, fieldDocs []docRange) {
 	generated = make(map[string]bool)
 	funcDecls = make(map[*types.Func]*ast.FuncDecl)
 	typeDocs = make(map[types.Object]bool)
@@ -126,7 +132,12 @@ func indexSyntax(pkg *packages.Package) (generated map[string]bool, funcDecls ma
 
 // indexTypeDecl records type documentation and struct field doc ranges from
 // one general declaration, returning the grown field-doc list.
-func indexTypeDecl(info *types.Info, typeDocs map[types.Object]bool, fieldDocs []docRange, decl *ast.GenDecl) []docRange {
+func indexTypeDecl(
+	info *types.Info,
+	typeDocs map[types.Object]bool,
+	fieldDocs []docRange,
+	decl *ast.GenDecl,
+) []docRange {
 	if decl.Tok != token.TYPE {
 		return fieldDocs
 	}
@@ -195,7 +206,14 @@ func extractType(
 	}
 
 	out.ReferencedTypeKeys = sortedRefKeys(refs.seen)
-	out.ExportedMembers, out.DocumentedExportedMembers = memberDocs(typeDocs, fieldDocs, tn, out.Fields, fieldPositions, docMethods)
+	out.ExportedMembers, out.DocumentedExportedMembers = memberDocs(
+		typeDocs,
+		fieldDocs,
+		tn,
+		out.Fields,
+		fieldPositions,
+		docMethods,
+	)
 
 	return out
 }
@@ -204,7 +222,10 @@ func extractType(
 // feeding field types into the reference collector. An embedded field is
 // one slot of the outer type; promoted members are never represented here
 // (§ promoted policy). Non-struct types yield no fields.
-func structFields(named *types.Named, refs *refCollector) ([]domain.FieldFacts, map[*types.Var]int, []token.Pos) {
+func structFields(
+	named *types.Named,
+	refs *refCollector,
+) ([]domain.FieldFacts, map[*types.Var]int, []token.Pos) {
 	st, ok := named.Underlying().(*types.Struct)
 	if !ok {
 		return nil, nil, nil
@@ -239,7 +260,13 @@ type methodDecl struct {
 // (receiver-carrying functions; pointer and value receivers both resolve
 // here) sorted by name then source position. Promoted methods never appear
 // in named.Method.
-func sortedMethods(fset *token.FileSet, opts extractorOptions, generated map[string]bool, funcDecls map[*types.Func]*ast.FuncDecl, named *types.Named) []methodDecl {
+func sortedMethods(
+	fset *token.FileSet,
+	opts extractorOptions,
+	generated map[string]bool,
+	funcDecls map[*types.Func]*ast.FuncDecl,
+	named *types.Named,
+) []methodDecl {
 	methods := make([]methodDecl, 0, named.NumMethods())
 	for fn := range named.Methods() {
 		fn := fn
@@ -456,7 +483,12 @@ func fieldDocumented(fieldDocs []docRange, pos token.Pos) bool {
 
 // skipPos reports whether the declaration at pos lives in a generated file
 // that the run excludes.
-func skipPos(fset *token.FileSet, includeGenerated bool, generated map[string]bool, pos token.Pos) bool {
+func skipPos(
+	fset *token.FileSet,
+	includeGenerated bool,
+	generated map[string]bool,
+	pos token.Pos,
+) bool {
 	if includeGenerated {
 		return false
 	}
@@ -599,7 +631,12 @@ func descendRef(r *refCollector, t types.Type) {
 }
 
 // recordNamedRef marks one named type when it is another analyzed type.
-func recordNamedRef(seen map[string]bool, self *types.TypeName, analyzed map[string]bool, t *types.Named) {
+func recordNamedRef(
+	seen map[string]bool,
+	self *types.TypeName,
+	analyzed map[string]bool,
+	t *types.Named,
+) {
 	tn := t.Origin().Obj()
 	if tn != self && tn.Pkg() != nil && analyzed[tn.Pkg().Path()] {
 		seen[domain.TypeKey(tn.Pkg().Path(), tn.Name())] = true

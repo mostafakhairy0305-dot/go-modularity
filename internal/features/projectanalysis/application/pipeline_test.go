@@ -25,12 +25,18 @@ func TestCollectOptionsMapping(t *testing.T) {
 func TestNewReusabilityCalculatorGating(t *testing.T) {
 	t.Parallel()
 
-	calculator, err := newReusabilityCalculator(map[string]bool{}, metrics.DefaultReusabilityWeights())
+	calculator, err := newReusabilityCalculator(
+		map[string]bool{},
+		metrics.DefaultReusabilityWeights(),
+	)
 	if err != nil || calculator != nil {
 		t.Fatalf("no reusability/cbo selected → nil calculator; got %v err %v", calculator, err)
 	}
 
-	calculator, err = newReusabilityCalculator(map[string]bool{metrics.MetricReusability: true}, metrics.DefaultReusabilityWeights())
+	calculator, err = newReusabilityCalculator(
+		map[string]bool{metrics.MetricReusability: true},
+		metrics.DefaultReusabilityWeights(),
+	)
 	if err != nil || calculator == nil {
 		t.Fatalf("reusability selected → calculator; got %v err %v", calculator, err)
 	}

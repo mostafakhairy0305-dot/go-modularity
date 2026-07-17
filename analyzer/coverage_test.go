@@ -27,8 +27,21 @@ func TestRunnerRunReportsPackageAndTypeViolations(t *testing.T) {
 
 	r := &runner{byPkg: map[string][]policydomain.Violation{
 		"example.com/p": {
-			{Package: "example.com/p", Key: policydomain.KeyTypes, Value: 2, Comparator: policydomain.ComparatorMax, Threshold: 1},
-			{Package: "example.com/p", Type: "Widget", Key: policydomain.KeyMethods, Value: 0.5, Comparator: policydomain.ComparatorMin, Threshold: 1.25},
+			{
+				Package:    "example.com/p",
+				Key:        policydomain.KeyTypes,
+				Value:      2,
+				Comparator: policydomain.ComparatorMax,
+				Threshold:  1,
+			},
+			{
+				Package:    "example.com/p",
+				Type:       "Widget",
+				Key:        policydomain.KeyMethods,
+				Value:      0.5,
+				Comparator: policydomain.ComparatorMin,
+				Threshold:  1.25,
+			},
 		},
 	}}
 	r.once.Do(func() {})
@@ -92,7 +105,11 @@ func TestResolvePolicyDiscoveryAndDefaults(t *testing.T) {
 	}
 
 	config := filepath.Join(dir, ".modularity.yml")
-	if err := os.WriteFile(config, []byte("version: 1\npackage:\n  types: 3\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		config,
+		[]byte("version: 1\npackage:\n  types: 3\n"),
+		0o600,
+	); err != nil {
 		t.Fatal(err)
 	}
 	discovered, err := resolvePolicy("", dir)

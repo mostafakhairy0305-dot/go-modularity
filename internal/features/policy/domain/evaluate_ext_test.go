@@ -10,11 +10,21 @@ import (
 )
 
 func typeMetric(name string, value float64) metrics.MetricResult {
-	return metrics.MetricResult{Name: name, Scope: metrics.ScopeType, Value: value, Applicable: true}
+	return metrics.MetricResult{
+		Name:       name,
+		Scope:      metrics.ScopeType,
+		Value:      value,
+		Applicable: true,
+	}
 }
 
 func naMetric(name string) metrics.MetricResult {
-	return metrics.MetricResult{Name: name, Scope: metrics.ScopeType, Applicable: false, Reason: "not applicable"}
+	return metrics.MetricResult{
+		Name:       name,
+		Scope:      metrics.ScopeType,
+		Applicable: false,
+		Reason:     "not applicable",
+	}
 }
 
 // sampleReport is a deliberately "bad" one-package report: over budget on
@@ -28,7 +38,12 @@ func sampleReport() gomodularity.Report {
 			ExportedFuncs:   20,
 			UnexportedFuncs: 20,
 			Metrics: []metrics.MetricResult{
-				{Name: metrics.MetricDistance, Scope: metrics.ScopePackage, Value: 0.9, Applicable: true},
+				{
+					Name:       metrics.MetricDistance,
+					Scope:      metrics.ScopePackage,
+					Value:      0.9,
+					Applicable: true,
+				},
 			},
 			Types: []gomodularity.TypeReport{{
 				Name:    "Big",
@@ -118,7 +133,12 @@ func TestEvaluateChecksBothBounds(t *testing.T) {
 		Packages: []gomodularity.PackageReport{{
 			Path: "p",
 			Metrics: []metrics.MetricResult{
-				{Name: metrics.MetricDistance, Scope: metrics.ScopePackage, Value: 0.9, Applicable: true},
+				{
+					Name:       metrics.MetricDistance,
+					Scope:      metrics.ScopePackage,
+					Value:      0.9,
+					Applicable: true,
+				},
 			},
 		}},
 	}
@@ -140,8 +160,21 @@ func TestFormatViolations(t *testing.T) {
 	}
 
 	out := domain.FormatViolations([]domain.Violation{
-		{Package: "example.com/m/foo", Key: domain.KeyTypes, Value: 25, Comparator: domain.ComparatorMax, Threshold: 15},
-		{Package: "example.com/m/foo", Type: "Big", Key: metrics.MetricReusability, Value: 0.42, Comparator: domain.ComparatorMin, Threshold: 0.6},
+		{
+			Package:    "example.com/m/foo",
+			Key:        domain.KeyTypes,
+			Value:      25,
+			Comparator: domain.ComparatorMax,
+			Threshold:  15,
+		},
+		{
+			Package:    "example.com/m/foo",
+			Type:       "Big",
+			Key:        metrics.MetricReusability,
+			Value:      0.42,
+			Comparator: domain.ComparatorMin,
+			Threshold:  0.6,
+		},
 	})
 
 	for _, want := range []string{
@@ -154,7 +187,17 @@ func TestFormatViolations(t *testing.T) {
 		}
 	}
 
-	single := domain.FormatViolations([]domain.Violation{{Package: "p", Key: domain.KeyExportedFuncs, Value: 5, Comparator: domain.ComparatorMax, Threshold: 3}})
+	single := domain.FormatViolations(
+		[]domain.Violation{
+			{
+				Package:    "p",
+				Key:        domain.KeyExportedFuncs,
+				Value:      5,
+				Comparator: domain.ComparatorMax,
+				Threshold:  3,
+			},
+		},
+	)
 	if !strings.HasPrefix(single, "policy: 1 violation\n") {
 		t.Errorf("singular header wrong: %q", single)
 	}
@@ -169,7 +212,11 @@ func TestValidate(t *testing.T) {
 
 	cases := map[string]domain.Policy{
 		"unknown metric": {Metrics: map[string]domain.Limit{"nope": {Max: 1, HasMax: true}}},
-		"min over max":   {Metrics: map[string]domain.Limit{metrics.MetricAMC: {Min: 5, HasMin: true, Max: 2, HasMax: true}}},
+		"min over max": {
+			Metrics: map[string]domain.Limit{
+				metrics.MetricAMC: {Min: 5, HasMin: true, Max: 2, HasMax: true},
+			},
+		},
 		"wrong package metric": {
 			PackageMetrics: map[string]domain.Limit{metrics.MetricAMC: {Max: 1, HasMax: true}},
 		},
@@ -193,15 +240,30 @@ func TestApplyOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := domain.ApplyOverride(&policy, metrics.MetricCBO, domain.ComparatorMax, 8); err != nil {
+	if err := domain.ApplyOverride(
+		&policy,
+		metrics.MetricCBO,
+		domain.ComparatorMax,
+		8,
+	); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := domain.ApplyOverride(&policy, "type."+metrics.MetricCBO, domain.ComparatorMax, 3); err != nil {
+	if err := domain.ApplyOverride(
+		&policy,
+		"type."+metrics.MetricCBO,
+		domain.ComparatorMax,
+		3,
+	); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := domain.ApplyOverride(&policy, "package."+metrics.MetricDistance, domain.ComparatorMax, 0.5); err != nil {
+	if err := domain.ApplyOverride(
+		&policy,
+		"package."+metrics.MetricDistance,
+		domain.ComparatorMax,
+		0.5,
+	); err != nil {
 		t.Fatal(err)
 	}
 

@@ -47,12 +47,28 @@ func (s writerSink) Open() (io.WriteCloser, error) {
 
 func TestWriteOpenAndRenderErrors(t *testing.T) {
 	sentinel := errors.New("write failed")
-	if err := Write(sampleReport(), domain.FormatText, failingSink{err: sentinel}, domain.TextOptions{}); !errors.Is(err, sentinel) {
+	if err := Write(
+		sampleReport(),
+		domain.FormatText,
+		failingSink{err: sentinel},
+		domain.TextOptions{},
+	); !errors.Is(
+		err,
+		sentinel,
+	) {
 		t.Fatalf("open error = %v, want sentinel", err)
 	}
 
 	w := &trackingWriteCloser{err: sentinel}
-	if err := Write(sampleReport(), domain.FormatText, writerSink{w: w}, domain.TextOptions{}); !errors.Is(err, sentinel) {
+	if err := Write(
+		sampleReport(),
+		domain.FormatText,
+		writerSink{w: w},
+		domain.TextOptions{},
+	); !errors.Is(
+		err,
+		sentinel,
+	) {
 		t.Fatalf("render error = %v, want sentinel", err)
 	}
 	if !w.closed {
@@ -66,7 +82,8 @@ func TestJSONDebugStringsAndMarshalError(t *testing.T) {
 		Tool:          jsonTool{Name: "go-modularity", Version: "test"},
 		Packages:      []jsonPackage{{Path: "example.com/p"}},
 	}).String()
-	if !strings.Contains(reportSummary, "schema 2") || !strings.Contains(reportSummary, "1 packages") {
+	if !strings.Contains(reportSummary, "schema 2") ||
+		!strings.Contains(reportSummary, "1 packages") {
 		t.Fatalf("jsonReport.String() = %q", reportSummary)
 	}
 
@@ -157,7 +174,15 @@ func TestRenderCSVWriteErrors(t *testing.T) {
 	}
 	big.Packages[0] = pkg
 
-	if err := render(&failWriter{allow: 0, err: sentinel}, big, domain.FormatCSV, domain.TextOptions{}); !errors.Is(err, sentinel) {
+	if err := render(
+		&failWriter{allow: 0, err: sentinel},
+		big,
+		domain.FormatCSV,
+		domain.TextOptions{},
+	); !errors.Is(
+		err,
+		sentinel,
+	) {
 		t.Fatalf("csv write error = %v, want sentinel", err)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	typefacts "github.com/mostafakhairy0305-dot/go-modularity/internal/features/typefacts/domain"
-
 	"github.com/mostafakhairy0305-dot/go-modularity/internal/shared/bitset"
 )
 

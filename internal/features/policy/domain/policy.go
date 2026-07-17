@@ -175,16 +175,30 @@ func validateMetrics(p Policy) error {
 		return err
 	}
 
-	if err := validateMetricMap("package metric", "package.", p.PackageMetrics, metricSet(metrics.PackageMetricOrder())); err != nil {
+	if err := validateMetricMap(
+		"package metric",
+		"package.",
+		p.PackageMetrics,
+		metricSet(metrics.PackageMetricOrder()),
+	); err != nil {
 		return err
 	}
 
-	return validateMetricMap("type metric", "type.", p.TypeMetrics, metricSet(metrics.TypeMetricOrder()))
+	return validateMetricMap(
+		"type metric",
+		"type.",
+		p.TypeMetrics,
+		metricSet(metrics.TypeMetricOrder()),
+	)
 }
 
 // validateMetricMap visits names in sorted order so the first reported error is
 // deterministic.
-func validateMetricMap(label, keyPrefix string, metricLimits map[string]Limit, known map[string]bool) error {
+func validateMetricMap(
+	label, keyPrefix string,
+	metricLimits map[string]Limit,
+	known map[string]bool,
+) error {
 	names := make([]string, 0, len(metricLimits))
 	for name := range metricLimits {
 		names = append(names, name)

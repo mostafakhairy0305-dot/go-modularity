@@ -34,7 +34,13 @@ func TestAnalyzerImplementable(t *testing.T) {
 	}
 
 	sentinel := errors.New("boom")
-	if _, err := (fakeAnalyzer{err: sentinel}).Analyze(context.Background(), inbound.Options{}); !errors.Is(err, sentinel) {
+	if _, err := (fakeAnalyzer{err: sentinel}).Analyze(
+		context.Background(),
+		inbound.Options{},
+	); !errors.Is(
+		err,
+		sentinel,
+	) {
 		t.Fatalf("error not propagated: %v", err)
 	}
 }

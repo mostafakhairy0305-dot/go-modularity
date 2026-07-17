@@ -37,8 +37,18 @@ func TestTextMultiSectionSpacerAndMissingMetrics(t *testing.T) {
 			{
 				Path: "example.com/m",
 				Metrics: []metrics.MetricResult{
-					{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 0.5, Applicable: true},
-					{Name: metrics.MetricDistance, Scope: metrics.ScopePackage, Value: 0.1, Applicable: true},
+					{
+						Name:       metrics.MetricAbstractness,
+						Scope:      metrics.ScopePackage,
+						Value:      0.5,
+						Applicable: true,
+					},
+					{
+						Name:       metrics.MetricDistance,
+						Scope:      metrics.ScopePackage,
+						Value:      0.1,
+						Applicable: true,
+					},
 				},
 				// No types → typesTotal 0 on the root package row.
 			},
@@ -46,7 +56,12 @@ func TestTextMultiSectionSpacerAndMissingMetrics(t *testing.T) {
 				Path: "example.com/m/leaf",
 				Metrics: []metrics.MetricResult{
 					// Missing distance (present elsewhere) → blank trailing cell.
-					{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Applicable: false, Reason: "isolated"},
+					{
+						Name:       metrics.MetricAbstractness,
+						Scope:      metrics.ScopePackage,
+						Applicable: false,
+						Reason:     "isolated",
+					},
 				},
 				Types: []gomodularity.TypeReport{{
 					Name: "T",
@@ -81,18 +96,33 @@ func TestTextExplainAllTypesAndSkipEmptyNotes(t *testing.T) {
 			{
 				Path: "example.com/m/quiet",
 				Metrics: []metrics.MetricResult{
-					{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 0, Applicable: true},
+					{
+						Name:       metrics.MetricAbstractness,
+						Scope:      metrics.ScopePackage,
+						Value:      0,
+						Applicable: true,
+					},
 				},
 			},
 			{
 				Path: "example.com/m/noisy",
 				Types: []gomodularity.TypeReport{
-					{Name: "A", Metrics: []metrics.MetricResult{{
-						Name: metrics.MetricTCC, Scope: metrics.ScopeType, Applicable: false, Reason: "fewer than two methods",
-					}}},
-					{Name: "B", Metrics: []metrics.MetricResult{{
-						Name: metrics.MetricTCC, Scope: metrics.ScopeType, Applicable: false, Reason: "fewer than two methods",
-					}}},
+					{Name: "A", Metrics: []metrics.MetricResult{
+						{
+							Name:       metrics.MetricTCC,
+							Scope:      metrics.ScopeType,
+							Applicable: false,
+							Reason:     "fewer than two methods",
+						},
+					}},
+					{Name: "B", Metrics: []metrics.MetricResult{
+						{
+							Name:       metrics.MetricTCC,
+							Scope:      metrics.ScopeType,
+							Applicable: false,
+							Reason:     "fewer than two methods",
+						},
+					}},
 				},
 			},
 		},
@@ -135,14 +165,29 @@ func TestTextTrailingBlankPackageMetric(t *testing.T) {
 			{
 				Path: "example.com/m/a",
 				Metrics: []metrics.MetricResult{
-					{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 1, Applicable: true},
-					{Name: metrics.MetricDistance, Scope: metrics.ScopePackage, Value: 0, Applicable: true},
+					{
+						Name:       metrics.MetricAbstractness,
+						Scope:      metrics.ScopePackage,
+						Value:      1,
+						Applicable: true,
+					},
+					{
+						Name:       metrics.MetricDistance,
+						Scope:      metrics.ScopePackage,
+						Value:      0,
+						Applicable: true,
+					},
 				},
 			},
 			{
 				Path: "example.com/m/b",
 				Metrics: []metrics.MetricResult{
-					{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage, Value: 0, Applicable: true},
+					{
+						Name:       metrics.MetricAbstractness,
+						Scope:      metrics.ScopePackage,
+						Value:      0,
+						Applicable: true,
+					},
 				},
 			},
 		},

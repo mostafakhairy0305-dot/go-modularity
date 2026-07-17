@@ -36,7 +36,11 @@ func TestAnalyzeFixture(t *testing.T) {
 	// Packages come back sorted by import path.
 	for i := 1; i < len(result.Packages); i++ {
 		if result.Packages[i-1].Path > result.Packages[i].Path {
-			t.Fatalf("packages not sorted: %s before %s", result.Packages[i-1].Path, result.Packages[i].Path)
+			t.Fatalf(
+				"packages not sorted: %s before %s",
+				result.Packages[i-1].Path,
+				result.Packages[i].Path,
+			)
 		}
 	}
 }

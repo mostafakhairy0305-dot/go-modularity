@@ -27,13 +27,29 @@ func report() gomodularity.Report {
 		SchemaVersion: "1",
 		Tool:          gomodularity.ToolInfo{Name: "go-modularity", Version: "test"},
 		Module:        "example.com/m",
-		Packages: []gomodularity.PackageReport{{
-			Path:    "example.com/m/a",
-			Metrics: []metrics.MetricResult{{Name: "abstractness", Scope: metrics.ScopePackage, Value: 0.5, Applicable: true, Definition: "d"}},
-			Types: []gomodularity.TypeReport{{Name: "A", Metrics: []metrics.MetricResult{
-				{Name: "amc", Scope: metrics.ScopeType, Value: 2, Applicable: true, Definition: "d"},
-			}}},
-		}},
+		Packages: []gomodularity.PackageReport{
+			{
+				Path: "example.com/m/a",
+				Metrics: []metrics.MetricResult{
+					{
+						Name:       "abstractness",
+						Scope:      metrics.ScopePackage,
+						Value:      0.5,
+						Applicable: true,
+						Definition: "d",
+					},
+				},
+				Types: []gomodularity.TypeReport{{Name: "A", Metrics: []metrics.MetricResult{
+					{
+						Name:       "amc",
+						Scope:      metrics.ScopeType,
+						Value:      2,
+						Applicable: true,
+						Definition: "d",
+					},
+				}}},
+			},
+		},
 	}
 }
 

@@ -484,7 +484,10 @@ func nodeTypeAggCells(node *treeNode, typeCols []string) []tableCell {
 	cells := make([]tableCell, 0, len(typeCols))
 	for _, name := range typeCols {
 		st := node.typeAgg[name]
-		cells = append(cells, meanCell(st, func(v float64) string { return valueColor(name, v, st) }))
+		cells = append(
+			cells,
+			meanCell(st, func(v float64) string { return valueColor(name, v, st) }),
+		)
 	}
 
 	return cells
@@ -510,7 +513,11 @@ func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string)
 
 // typeMetricCells renders one type's metric columns, coloring each applicable
 // value against the subtree's column range and marking the rest n/a.
-func typeMetricCells(byName map[string]metrics.MetricResult, typeCols []string, node *treeNode) []tableCell {
+func typeMetricCells(
+	byName map[string]metrics.MetricResult,
+	typeCols []string,
+	node *treeNode,
+) []tableCell {
 	cells := make([]tableCell, 0, len(typeCols))
 	for _, name := range typeCols {
 		r, ok := byName[name]
@@ -553,7 +560,10 @@ func packageMetricCells(pkg *gomodularity.PackageReport, cols []string) []tableC
 		case !r.Applicable:
 			cells = append(cells, naTableCell())
 		default:
-			cells = append(cells, tableCell{text: formatCell(r.Value), style: ansiBold + boundedColor(name, r.Value)})
+			cells = append(
+				cells,
+				tableCell{text: formatCell(r.Value), style: ansiBold + boundedColor(name, r.Value)},
+			)
 		}
 	}
 
@@ -781,7 +791,16 @@ func paint(text, style string, enabled bool) string {
 
 // CSVHeader is the fixed CSV column set.
 func CSVHeader() []string {
-	return []string{"package", "type", "metric", "scope", "value", "applicable", "reason", "definition"}
+	return []string{
+		"package",
+		"type",
+		"metric",
+		"scope",
+		"value",
+		"applicable",
+		"reason",
+		"definition",
+	}
 }
 
 // CSVRecords flattens the report into one record per entity and metric, in

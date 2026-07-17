@@ -21,7 +21,10 @@ func TestFactSourceContract(t *testing.T) {
 
 	var src FactSource = stubSource{mod: "example.com/m"}
 
-	mod, pkgs, err := src.Load(context.Background(), FactOptions{Patterns: []string{"./..."}, Workers: 2})
+	mod, pkgs, err := src.Load(
+		context.Background(),
+		FactOptions{Patterns: []string{"./..."}, Workers: 2},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}

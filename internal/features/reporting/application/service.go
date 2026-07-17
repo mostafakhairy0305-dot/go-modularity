@@ -18,7 +18,12 @@ var jsonMarshal = json.Marshal
 
 // Write renders the report in the given format into the sink. Options are
 // read only by the text format.
-func Write(report gomodularity.Report, format domain.Format, sink outbound.Sink, opts domain.TextOptions) error {
+func Write(
+	report gomodularity.Report,
+	format domain.Format,
+	sink outbound.Sink,
+	opts domain.TextOptions,
+) error {
 	w, err := sink.Open()
 	if err != nil {
 		return err
@@ -34,7 +39,12 @@ func Write(report gomodularity.Report, format domain.Format, sink outbound.Sink,
 	return w.Close()
 }
 
-func render(w io.Writer, report gomodularity.Report, format domain.Format, opts domain.TextOptions) error {
+func render(
+	w io.Writer,
+	report gomodularity.Report,
+	format domain.Format,
+	opts domain.TextOptions,
+) error {
 	switch format {
 	case domain.FormatText:
 		_, err := io.WriteString(w, domain.Text(report, opts))
