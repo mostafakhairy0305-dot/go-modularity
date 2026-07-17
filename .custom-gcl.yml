@@ -1,13 +1,12 @@
+---
 # Custom golangci-lint binary including go-modularity.
 # Build: golangci-lint custom -v
 # Run:   ./custom-gcl run ./...
 #
 # See https://golangci-lint.run/docs/plugins/module-plugins/
 version: v2.12.2
-
 name: custom-gcl
 destination: .
-
 plugins:
   - module: github.com/mostafakhairy0305-dot/go-modularity
     import: github.com/mostafakhairy0305-dot/go-modularity/plugin

@@ -1,6 +1,5 @@
 ---
 version: 1
-
 package:
   types:
     max: 10
@@ -15,7 +14,6 @@ package:
   metrics:
     distance:
       max: 0.70
-
 type:
   fields:
     max: 14
