@@ -11,12 +11,47 @@ linters:
         type: module
         description: Enforce Go modularity policy thresholds
         settings:
-          # Optional path to a policy file. Empty discovers .modularity.yml
-          # in the working directory, else uses recommended defaults.
-          config: .modularity.yml
           # Package patterns for the whole-module analyze (default: ["./..."]).
           patterns: [./...]
           tests: false
           generated: false
           dependency-scope: module
           field-usage: direct
+
+          # Policy limits are configured inline. The plugin never reads or
+          # discovers .modularity.yml. A bare number is shorthand for max.
+          # Remove all policy sections to use the recommended defaults. Once
+          # any section is present, only the inline limits are enforced. The
+          # former config file-path setting is intentionally unsupported.
+          package:
+            types:
+              max: 12
+            exported_funcs:
+              max: 12
+            unexported_funcs:
+              max: 18
+            efferent:
+              max: 10
+            metrics:
+              distance:
+                max: 0.5
+          type:
+            fields:
+              max: 8
+            methods:
+              max: 10
+            metrics:
+              amc:
+                max: 3
+              lcom1:
+                max: 10
+              lcom96b:
+                max: 0.5
+              camc:
+                min: 0.5
+              tcc:
+                min: 0.5
+              cbo:
+                max: 6
+              reusability:
+                min: 0.7

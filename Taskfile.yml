@@ -117,9 +117,26 @@ tasks:
       - go test -covermode=atomic -coverprofile=coverage.out ./...
   check:
     run: once
-    desc: Enforce the modularity policy (.modularity.yml); exits 3 on violations
+    desc: Enforce the modularity policy thresholds; exits 3 on violations
     cmds:
-      - go run . --check ./...
+      - >-
+        go run . --check
+        --max=types=10
+        --max=exported_funcs=20
+        --max=unexported_funcs=35
+        --max=efferent=11
+        --max=afferent=12
+        --max=package.distance=0.70
+        --max=fields=14
+        --max=methods=5
+        --max=type.amc=4
+        --max=type.lcom1=5
+        --max=type.lcom96b=0.70
+        --min=type.camc=0.30
+        --min=type.tcc=0.70
+        --max=type.cbo=4
+        --min=type.reusability=0.5
+        ./...
   ci:
     run: once
     desc: Run CI checks

@@ -1,20 +1,19 @@
 package analyzer
 
 import (
+	"cmp"
 	"fmt"
 
 	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 )
 
-// Settings configures the modularity policy analyzer. Fields map to the same
-// knobs as the CLI and the gomodularity.Config facade. JSON tags match the
-// keys accepted under linters.settings.custom.gomodularity.settings.
+// Settings configures the modularity policy analyzer. Analysis fields map to
+// the gomodularity.Config facade. Policy fields use the same package/type
+// min/max shape as CLI thresholds, but are decoded directly from
+// golangci-lint's linters.settings.custom.gomodularity.settings block.
 type Settings struct {
-	// Config is an explicit policy file path. Empty means discover
-	// .modularity.yml under Directory, else use the recommended defaults.
-	Config string `json:"config"`
-	// Directory is the working directory for package loading and policy
-	// discovery. Empty means the process working directory.
+	// Directory is the working directory for package loading. Empty means the
+	// process working directory.
 	Directory string `json:"directory"`
 	// Patterns are the package patterns to analyze. Empty means ["./..."].
 	Patterns []string `json:"patterns"`
@@ -32,6 +31,14 @@ type Settings struct {
 	ContinueOnError bool `json:"continue-on-error"`
 	// BuildTags are extra build tags for package loading.
 	BuildTags []string `json:"build-tags"`
+	// Package configures package-level structural and metric limits. Nil,
+	// together with nil Type and Metrics, selects the recommended defaults.
+	Package *PackageSettings `json:"package"`
+	// Type configures type-level structural and metric limits.
+	Type *TypeSettings `json:"type"`
+	// Metrics configures legacy/global metric limits. Prefer the scoped metric
+	// maps under Package and Type for new configurations.
+	Metrics map[string]LimitSettings `json:"metrics"`
 }
 
 func (s Settings) withDefaults() Settings {
@@ -39,36 +46,47 @@ func (s Settings) withDefaults() Settings {
 		s.Patterns = []string{"./..."}
 	}
 
-	if s.DependencyScope == "" {
-		s.DependencyScope = string(gomodularity.DependencyScopeModule)
-	}
-
-	if s.FieldUsage == "" {
-		s.FieldUsage = string(gomodularity.FieldUsageDirect)
-	}
+	s.DependencyScope = cmp.Or(s.DependencyScope, string(gomodularity.DependencyScopeModule))
+	s.FieldUsage = cmp.Or(s.FieldUsage, string(gomodularity.FieldUsageDirect))
 
 	return s
 }
 
 func (s Settings) validate() error {
-	switch gomodularity.DependencyScope(s.DependencyScope) {
+	if err := validateDependencyScope(s.DependencyScope); err != nil {
+		return err
+	}
+
+	if err := validateFieldUsage(s.FieldUsage); err != nil {
+		return err
+	}
+
+	_, err := s.policy()
+
+	return err
+}
+
+func validateDependencyScope(value string) error {
+	switch gomodularity.DependencyScope(value) {
 	case gomodularity.DependencyScopeProject,
 		gomodularity.DependencyScopeModule,
 		gomodularity.DependencyScopeAll:
+		return nil
 	default:
 		return fmt.Errorf(
 			"invalid dependency-scope %q (want project, module, or all)",
-			s.DependencyScope,
+			value,
 		)
 	}
+}
 
-	switch gomodularity.FieldUsageMode(s.FieldUsage) {
+func validateFieldUsage(value string) error {
+	switch gomodularity.FieldUsageMode(value) {
 	case gomodularity.FieldUsageDirect, gomodularity.FieldUsageTransitive:
+		return nil
 	default:
-		return fmt.Errorf("invalid field-usage %q (want direct or transitive)", s.FieldUsage)
+		return fmt.Errorf("invalid field-usage %q (want direct or transitive)", value)
 	}
-
-	return nil
 }
 
 func (s Settings) toConfig(selected []gomodularity.MetricName) gomodularity.Config {

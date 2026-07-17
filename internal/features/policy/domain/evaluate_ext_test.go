@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -149,6 +150,32 @@ func TestEvaluateChecksBothBounds(t *testing.T) {
 	got := domain.Evaluate(report, policy)
 	if len(got) != 1 || got[0].Comparator != domain.ComparatorMax {
 		t.Fatalf("want one max violation, got %+v", got)
+	}
+}
+
+func TestEvaluateToleratesFloatingPointNoiseAtBoundary(t *testing.T) {
+	t.Parallel()
+
+	report := gomodularity.Report{Packages: []gomodularity.PackageReport{{
+		Path: "p",
+		Types: []gomodularity.TypeReport{{
+			Name: "AtBoundary",
+			Metrics: []metrics.MetricResult{
+				typeMetric(metrics.MetricReusability, math.Nextafter(0.5, 0)),
+			},
+		}},
+	}}}
+	policy := domain.Policy{TypeMetrics: map[string]domain.Limit{
+		metrics.MetricReusability: {Min: 0.5, HasMin: true},
+	}}
+
+	if got := domain.Evaluate(report, policy); len(got) != 0 {
+		t.Fatalf("adjacent float below boundary produced violations: %+v", got)
+	}
+
+	report.Packages[0].Types[0].Metrics[0].Value = 0.5 - 1e-9
+	if got := domain.Evaluate(report, policy); len(got) != 1 {
+		t.Fatalf("meaningful threshold crossing produced %d violations, want 1", len(got))
 	}
 }
 

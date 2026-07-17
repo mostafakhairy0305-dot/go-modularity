@@ -207,33 +207,32 @@ func TestRunCheckFailsExitsThree(t *testing.T) {
 	}
 }
 
-// Black-box: a satisfiable config passes with exit 0, exercising -config and
-// every field of the schema at once.
-func TestRunCheckConfigPasses(t *testing.T) {
+// Black-box: a satisfiable flag-only policy passes with exit 0, exercising
+// structural, package-metric, and type-metric bounds at once.
+func TestRunCheckFlagPolicyPasses(t *testing.T) {
 	chdirFixture(t)
 
-	config := filepath.Join(t.TempDir(), "policy.yml")
-	lenient := `
-version: 1
-package: { types: 100000, exported_funcs: 100000, unexported_funcs: 100000, afferent: 100000, efferent: 100000 }
-type: { fields: 100000, methods: 100000 }
-metrics:
-  amc: 100000
-  lcom1: 100000
-  lcom96b: 1
-  camc: { min: 0 }
-  tcc: { min: 0 }
-  cbo: 100000
-  reusability: { min: 0 }
-  distance: 1
-`
-	if err := os.WriteFile(config, []byte(lenient), 0o600); err != nil {
-		t.Fatal(err)
+	args := []string{
+		"--output", filepath.Join(t.TempDir(), "r.txt"),
+		"--max=types=100000",
+		"--max=exported_funcs=100000",
+		"--max=unexported_funcs=100000",
+		"--max=afferent=100000",
+		"--max=efferent=100000",
+		"--max=fields=100000",
+		"--max=methods=100000",
+		"--max=package.distance=1",
+		"--max=type.amc=100000",
+		"--max=type.lcom1=100000",
+		"--max=type.lcom96b=1",
+		"--min=type.camc=0",
+		"--min=type.tcc=0",
+		"--max=type.cbo=100000",
+		"--min=type.reusability=0",
+		"./...",
 	}
 
-	if code := cli.Run(
-		[]string{"--config", config, "--output", filepath.Join(t.TempDir(), "r.txt"), "./..."},
-	); code != 0 {
+	if code := cli.Run(args); code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
 }
@@ -247,6 +246,10 @@ func TestRunCheckKeyAndTriggers(t *testing.T) {
 
 	if code := cli.Run([]string{"--max", "bogus=5", "--output", out, "./..."}); code != 2 {
 		t.Fatalf("unknown key exit = %d, want 2", code)
+	}
+
+	if code := cli.Run([]string{"--check", "--output", out, "./..."}); code != 2 {
+		t.Fatalf("empty check exit = %d, want 2", code)
 	}
 
 	// No policy flag → no gate, even though types=0 would fail under one.

@@ -25,7 +25,7 @@ ADR 0006 keeps dependencies minimal and requires an ADR for new direct deps.
 
 ## Decision
 
-Keep the hexagonal pipeline and CLI unchanged. Add an adapter layer:
+Keep the hexagonal analysis pipeline unchanged. Add an adapter layer:
 
 1. Public package `analyzer` — builds a `go/analysis.Analyzer` that runs
    `gomodularity.Analyze` once (`sync.Once`) over configured patterns,
@@ -36,7 +36,22 @@ Keep the hexagonal pipeline and CLI unchanged. Add an adapter layer:
    `register.Plugin`, decodes custom settings into `analyzer.Settings`, and
    returns `LoadModeTypesInfo`.
 3. Add `github.com/golangci/plugin-module-register` as a direct dependency,
-   quarantined to `plugin/` (same pattern as yaml in ADR 0017).
+   quarantined to `plugin/`.
+
+Plugin policy thresholds are decoded inline from the custom linter's
+`.golangci.yml` settings. The plugin does not load or discover
+`.modularity.yml`; neither mode reads a policy file. The standalone CLI takes
+policy thresholds from repeatable `-max`/`-min` flags, while the plugin takes
+them from inline settings. Omitting all inline policy sections selects the
+recommended defaults. Providing any of the `package`, `type`, or legacy/global
+`metrics` sections defines the complete plugin policy; omitted limits are not
+merged back from the defaults. The inline shape matches the policy domain's
+`min`/`max` limits, including numeric shorthand for `max`, but does not carry a
+file `version` key.
+
+Settings decoding is strict. The former `config` file-path setting, unknown
+structural or limit keys, and metrics placed in the wrong scope are errors
+instead of silent no-ops.
 
 Consumers build a custom binary with `.custom-gcl.yml` pointing at this
 module's `plugin` import, then enable `gomodularity` under
@@ -47,4 +62,7 @@ module's `plugin` import, then enable `gomodularity` under
 One analysis core serves both modes. The Module Plugin dependency is present
 in `go.mod` but unused unless a consumer imports `plugin`. Coupling metrics
 remain correct because the adapter still performs a whole-module analyze.
+Plugin configuration is self-contained in `.golangci.yml`, while CLI users can
+use explicit `-max`/`-min` threshold flags.
+
 Amend ADR 0003 to allow the two lint packages alongside the metrics facade.

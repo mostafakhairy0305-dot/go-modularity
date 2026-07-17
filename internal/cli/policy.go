@@ -7,7 +7,6 @@ import (
 
 	gomodularity "github.com/mostafakhairy0305-dot/go-modularity/gomodularity"
 	policydomain "github.com/mostafakhairy0305-dot/go-modularity/internal/features/policy/domain"
-	"github.com/mostafakhairy0305-dot/go-modularity/internal/infrastructure/policyconfig"
 )
 
 // override is one CLI policy bound: a condition key and its numeric value.
@@ -53,42 +52,19 @@ func (o *overrideList) Set(value string) error {
 	return nil
 }
 
-// resolvePolicy builds the effective policy: a base from the explicit config
-// path, else an auto-discovered .modularity.yml, else the recommended
-// defaults; then the CLI overrides on top (defaults < file < flags). It
-// returns a human-readable source label so the CLI can say which policy ran,
-// and the validated policy.
+// resolvePolicy builds a policy from explicit CLI thresholds only. It returns
+// a human-readable source label so the CLI can say which policy ran, and the
+// validated policy.
 func resolvePolicy(
-	configPath string,
 	maxima, minima overrideList,
 ) (policydomain.Policy, string, error) {
-	var (
-		policy policydomain.Policy
-		source string
-	)
-
-	switch {
-	case configPath != "":
-		loaded, err := policyconfig.Load(configPath)
-		if err != nil {
-			return policydomain.Policy{}, "", err
-		}
-
-		policy, source = loaded, configPath
-
-	default:
-		if path, ok := policyconfig.Discover("."); ok {
-			loaded, err := policyconfig.Load(path)
-			if err != nil {
-				return policydomain.Policy{}, "", err
-			}
-
-			policy, source = loaded, path
-		} else {
-			policy, source = policydomain.DefaultPolicy(), "recommended defaults"
-		}
+	if len(maxima.items) == 0 && len(minima.items) == 0 {
+		return policydomain.Policy{}, "", fmt.Errorf(
+			"no policy thresholds configured; pass -max or -min",
+		)
 	}
 
+	var policy policydomain.Policy
 	for _, ov := range maxima.items {
 		if err := policydomain.ApplyOverride(
 			&policy,
@@ -111,20 +87,16 @@ func resolvePolicy(
 		}
 	}
 
-	if len(maxima.items) > 0 || len(minima.items) > 0 {
-		source += " + flag overrides"
-	}
-
 	if err := policydomain.Validate(policy); err != nil {
 		return policydomain.Policy{}, "", err
 	}
 
-	return policy, source, nil
+	return policy, "flag thresholds", nil
 }
 
 // gatedMetrics unions the policy's constrained metrics into the display set so
-// every gated metric is computed and rendered — a metric absent from the
-// report cannot be checked. Base order is preserved; new names are appended.
+// every gated metric is computed and rendered; a metric absent from the report
+// cannot be checked. Base order is preserved; new names are appended.
 func gatedMetrics(
 	base []gomodularity.MetricName,
 	policy policydomain.Policy,

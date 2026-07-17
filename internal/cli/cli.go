@@ -111,12 +111,7 @@ func run(args []string) int {
 		check         = fs.Bool(
 			"check",
 			false,
-			"enforce a modularity policy and exit 3 on violations",
-		)
-		configPath = fs.String(
-			"config",
-			"",
-			"policy config file (implies -check; default: auto-discover .modularity.yml)",
+			"enforce -max/-min thresholds and exit 3 on violations",
 		)
 	)
 
@@ -125,12 +120,12 @@ func run(args []string) int {
 	fs.Var(
 		&maxOverrides,
 		"max",
-		"policy upper-bound override key=value (repeatable; metric keys may be scoped as type.amc/package.distance; implies -check)",
+		"policy upper-bound threshold key=value (repeatable; metric keys may be scoped as type.amc/package.distance; implies -check)",
 	)
 	fs.Var(
 		&minOverrides,
 		"min",
-		"policy lower-bound override key=value (repeatable; metric keys may be scoped as type.reusability; implies -check)",
+		"policy lower-bound threshold key=value (repeatable; metric keys may be scoped as type.reusability; implies -check)",
 	)
 	if err := fs.Parse(args); err != nil {
 		// --help --web (either order) opens the metrics guide instead of
@@ -190,11 +185,10 @@ func run(args []string) int {
 		}()
 	}
 
-	// A policy gate runs only when explicitly requested: -check, an explicit
-	// -config, or any -max / -min override. Resolving it up front lets gated
-	// metrics join the display set so they are computed and rendered.
-	gating := *check || *configPath != "" || len(maxOverrides.items) > 0 ||
-		len(minOverrides.items) > 0
+	// A policy gate runs only when explicitly requested: -check or any -max /
+	// -min threshold. Resolving it up front lets gated metrics join the display
+	// set so they are computed and rendered.
+	gating := *check || len(maxOverrides.items) > 0 || len(minOverrides.items) > 0
 
 	var (
 		policy       policydomain.Policy
@@ -202,7 +196,7 @@ func run(args []string) int {
 	)
 
 	if gating {
-		resolved, source, err := resolvePolicy(*configPath, maxOverrides, minOverrides)
+		resolved, source, err := resolvePolicy(maxOverrides, minOverrides)
 		if err != nil {
 			logger.Error("policy configuration failed", "error", err)
 

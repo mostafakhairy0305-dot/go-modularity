@@ -24,10 +24,12 @@ only the module path. The page is fully self-contained: inline CSS and
 vanilla JavaScript, no external requests, usable from `file://`. Its chrome
 is monochrome with a black/white theme toggle; green/orange/red appear only
 on metric values, reusing the terminal renderer's quality thresholds. It
-offers a collapsible directory tree mirroring the text report plus flat
-types and packages views with column sorting, text/package/applicability
-filters, and motion-reduced animations. `json.Marshal`'s HTML escaping keeps
-hostile identifiers from terminating the script element.
+offers a collapsible directory tree using the text report's path hierarchy
+plus flat types and packages views with column sorting,
+text/package/applicability filters, and motion-reduced animations. Directory
+rows carry subtree means; package rows retain exact package metrics and carry
+subtree type means. `json.Marshal`'s HTML escaping keeps hostile identifiers
+from terminating the script element.
 
 The CLI gains `--web` as a shorthand for `-format=web`; without `-output`
 the report defaults to `modularity-report.html` and opens in the platform
@@ -39,5 +41,6 @@ so CI stays quiet (ADR 0011).
 Reports are shareable as one file and render identically offline and in CI
 artifacts. The vanilla-JS constraint means no build step and no npm surface,
 at the cost of hand-rolled table logic. Schema consumers are unaffected: the
-web payload is additive packaging around the versioned JSON schema. Opening a browser
-is best-effort; failures degrade to a logged warning, never a failed run.
+web payload is additive packaging around the versioned JSON schema. Opening a
+browser is best-effort; failures degrade to a logged warning, never a failed
+run.

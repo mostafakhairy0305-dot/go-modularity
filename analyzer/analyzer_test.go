@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -42,20 +41,12 @@ func TestNewAcceptsDefaults(t *testing.T) {
 
 func TestRunnerLoadGroupsViolations(t *testing.T) {
 	fixtureDir := filepath.Join(repoRoot(t), "testdata", "fixture")
-	policyPath := filepath.Join(t.TempDir(), "policy.yml")
-
-	if err := os.WriteFile(
-		policyPath,
-		[]byte("---\nversion: 1\ntype:\n  methods:\n    max: 0\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
+	methods := maximum(0)
 
 	r := newRunner(Settings{
 		Directory: fixtureDir,
-		Config:    policyPath,
 		Patterns:  []string{"./isolated"},
+		Type:      &TypeSettings{Methods: &methods},
 	}.withDefaults())
 
 	r.load()
@@ -78,6 +69,10 @@ func TestRunnerLoadGroupsViolations(t *testing.T) {
 	if !foundMethods {
 		t.Fatalf("expected methods violation on Value, got %#v", got)
 	}
+}
+
+func maximum(value float64) LimitSettings {
+	return LimitSettings{Max: &value}
 }
 
 func TestFormatViolation(t *testing.T) {

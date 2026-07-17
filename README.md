@@ -7,9 +7,9 @@ stable JSON, flat CSV, or an interactive single-file HTML report.
 
 ## golangci-lint Integration
 
-The `gomodularity` module plugin runs the same policy checks as
-`go-modularity -check` and reports policy violations as golangci-lint
-diagnostics. The standalone CLI remains available and works independently.
+The `gomodularity` module plugin uses the same threshold engine as the CLI and
+reports policy violations as golangci-lint diagnostics. The standalone CLI
+remains available and works independently.
 
 1. Add a `.custom-gcl.yml` that embeds the plugin package. This repository
    includes one for local development:
@@ -35,7 +35,16 @@ linters:
         type: module
         description: Enforce Go modularity policy thresholds
         settings:
-          config: .modularity.yml
+          package:
+            types: {max: 12}
+            metrics:
+              distance: {max: 0.5}
+          type:
+            fields: {max: 8}
+            methods: {max: 10}
+            metrics:
+              amc: {max: 3}
+              reusability: {min: 0.7}
 ```
 
 3. Build the custom golangci-lint binary and run it:
@@ -45,10 +54,27 @@ golangci-lint custom -v
 ./custom-gcl run ./...
 ```
 
-The plugin settings mirror the CLI flags: `config`, `patterns`, `tests`,
-`generated`, `dependency-scope`, `field-usage`, `workers`,
-`continue-on-error`, and `build-tags`. For policy behavior and configuration,
-see [Policy Checks](#policy-checks).
+The plugin reads policy limits directly from this `settings` block; it never
+loads or discovers `.modularity.yml`. The inline `package`, `type`, and legacy
+global `metrics` sections use the same `min`/`max` limit shape as CLI
+thresholds, including bare-number shorthand for `max`. If all three sections
+are omitted, the recommended defaults apply. Once any policy section is
+present, only the limits written inline are enforced.
+
+The former plugin setting `config` is intentionally unsupported; leaving
+`config: .modularity.yml` in `.golangci.yml` fails configuration decoding
+instead of silently reading a second file. Inline policy settings do not use a
+`version` key. Unknown structural keys, unknown keys inside a limit, and
+metrics placed under the wrong scope are rejected.
+
+The standalone CLI also ignores `.modularity.yml`; put CLI policy limits in
+`-max`/`-min` flags or a wrapper such as `task check`, and put golangci-lint
+plugin limits inline in `.golangci.yml`.
+
+Analysis settings are `directory`, `patterns`, `tests`, `generated`,
+`dependency-scope`, `field-usage`, `workers`, `continue-on-error`, and
+`build-tags`. See [.golangci.example.yml](.golangci.example.yml) for a complete
+inline policy and [Policy Checks](#policy-checks) for the available limits.
 
 ## Install
 
@@ -145,8 +171,7 @@ go-modularity -format=json ./...
 | `-memory-profile` | Write a heap profile after analysis completes. | off | `go-modularity -memory-profile=heap.prof ./...` |
 | `-verbose` | Enable debug logging to stderr. | `false` | `go-modularity -verbose ./...` |
 | `-version` | Print the version and exit. | off | `go-modularity -version` |
-| `-check` | Enforce a modularity policy (see [Policy Checks](#policy-checks)). Loads `.modularity.yml` if present, otherwise the recommended defaults. Any violation exits `3`. | `false` | `go-modularity -check ./...` |
-| `-config` | Path to a policy config file. Implies `-check` and skips auto-discovery. | auto-discover `.modularity.yml` | `go-modularity -config=policy.yml ./...` |
+| `-check` | Enforce the `-max`/`-min` thresholds passed on this command. Any violation exits `3`; `-check` without thresholds is a usage error. | `false` | `go-modularity -check -max=type.amc=5 ./...` |
 | `-max` | Set an upper-bound condition `key=value`; repeatable. `key` is a structural field, metric name, or scoped metric key such as `type.amc` or `package.distance`. Implies `-check`. | none | `go-modularity -max=type.amc=5 ./...` |
 | `-min` | Set a lower-bound condition `key=value`; repeatable. Implies `-check`. | none | `go-modularity -min=type.reusability=0.5 ./...` |
 
@@ -162,9 +187,12 @@ NO_COLOR=1 go-modularity ./...
 ### Text
 
 Text output is a tree table. Package paths are grouped by module-relative
-directories, package rows show package-level metrics, and type rows show
-type-level metrics. Directory and package rows also show means for type metrics
-below them.
+directories and type rows show type-level metrics. A leaf package row shows its
+exact package metrics. Any row that also owns descendants — whether it is a
+real package or a synthetic directory group — shows package- and type-metric
+means across its complete subtree instead. When the module-root package is
+present, its `.` row is the summary for the complete module. All means ignore
+not-applicable values.
 
 ```sh
 go-modularity -format=text -explain ./...
@@ -175,7 +203,9 @@ Important text conventions:
 | Text field | Meaning |
 | --- | --- |
 | `PATH / TYPE` | A package, directory group, or type name. |
-| Package or directory row | Shows package-level metrics, then means of type-level metrics under that row. Means ignore not-applicable values. |
+| Module-root `.` row | Shows package- and type-metric means for the complete module. Types declared directly in the root package follow as branches. |
+| Parent package or directory row | Shows package- and type-metric means across every applicable entity in its subtree. A real package with child packages is treated as a parent/group row. |
+| Leaf package row | Shows that package's exact package metrics, followed by means over its own types. |
 | Type row | Shows metrics for one named type. Package-level columns are blank on type rows. |
 | `Abst` | `abstractness`, a package-level metric. |
 | `Inst` | `instability`, a package-level metric. |
@@ -290,7 +320,7 @@ stdout is a terminal, opened in the default browser. What the page offers:
 
 | Feature | Meaning |
 | --- | --- |
-| Views | `Tree` (the same directory tree as the text report: nested directories with compressed single-child chains, collapsible at every level, directory and package rows carrying subtree means, plus one-click depth presets `1…N`/`All`), `Types` (flat table of every type with its field and method counts), and `Packages` (flat table with `Ca`/`Ce` coupling, function and type counts, and package metrics). |
+| Views | `Tree` (the same path hierarchy as the text report: nested directories with compressed single-child chains, collapsible at every level, directory rows carrying subtree means, package rows carrying exact package metrics plus subtree type means, and one-click depth presets `1…N`/`All`), `Types` (flat table of every type with its field and method counts), and `Packages` (flat table with `Ca`/`Ce` coupling, function and type counts, and package metrics). |
 | Sorting | In the `Types` and `Packages` views, click any column header to sort ascending/descending; not-applicable values always sort last. The tree view keeps the fixed path order of the text report. |
 | Filtering | Live text search (press `/`), a package dropdown, a hide-n/a-rows toggle, and a column show/hide picker. |
 | Values | Each cell shows the value with a mini-bar (bounded metrics absolute 0–1, unbounded relative to their column maximum). Values and bars are colored green (good), orange (mixed), or red (review) with the same quality rules as the terminal renderer — fixed thresholds for bounded metrics, column-range-relative for unbounded ones; `abstractness` and `instability` stay neutral. Hover a value or `–` for the full metric name, reason, and versioned definition. |
@@ -436,35 +466,40 @@ set of **conditions** — budgets on structural facts and bounds on metrics —
 evaluated against the report. Any violation prints a summary to stderr and
 exits `3`; the report itself still goes to stdout.
 
-Policy checks are **opt-in**. A committed `.modularity.yml` does nothing on its
-own; a check runs only when you pass a policy flag:
+Policy checks are **opt-in**. The standalone CLI does not load or discover
+`.modularity.yml`; a check uses only the thresholds passed on the command line.
+Existing `.modularity.yml` files are ignored. `-max` and `-min` imply `-check`,
+and `-check` without at least one threshold is a usage error:
 
 ```sh
-go-modularity -check ./...                  # .modularity.yml if present, else defaults
-go-modularity -config=policy.yml ./...      # an explicit file (implies -check)
-go-modularity -check -max=type.amc=5 ./...   # defaults, with one bound overridden
+go-modularity -max=type.amc=5 ./...
+go-modularity -min=type.reusability=0.5 ./...
+go-modularity -check -max=types=12 -max=package.distance=0.5 ./...
 ```
 
-The effective policy is layered, later winning: **recommended defaults → config
-file → `-max`/`-min` flags**. Gated metrics are added to the display set
-automatically, so a metric you gate on is always computed and shown. A
-condition on a metric is skipped wherever that metric is not applicable (for
-example `tcc` on a one-method type), so n/a cells never fail a build.
+The effective policy is exactly the set of `-max` and `-min` thresholds in that
+run. Gated metrics are added to the display set automatically, so a metric you
+gate on is always computed and shown. A condition on a metric is skipped
+wherever that metric is not applicable (for example `tcc` on a one-method
+type), so n/a cells never fail a build.
 
-Every check logs its outcome and the policy it used to stderr, so a run is never
-a silent no-op — for example `policy check passed source=.modularity.yml` or
-`policy check failed source="recommended defaults" violations=15`. A discovered
-`.modularity.yml` (like this repository's) is what `-check` uses unless you pass
-`-config`, so the log line tells you whether the defaults or a file were
-applied.
+Threshold comparisons absorb floating-point representation noise at the
+boundary. A value must cross the configured limit by more than
+`1e-12 × max(1, |value|, |threshold|)` to become a violation, so an adjacent
+floating-point value below `min: 0.5` is treated as equal to the boundary while
+a meaningful difference still fails.
+
+Every check logs its outcome and source to stderr, so a run is never a silent
+no-op, for example `policy check passed source="flag thresholds"` or
+`policy check failed source="flag thresholds" violations=15`.
 
 ### Conditions
 
-Every field can carry a `max`, a `min`, or both. Structural budgets are
-per-package or per-type counts; metric bounds follow each metric's good/bad
-direction. CLI overrides can use bare legacy metric keys (`amc`) or scoped keys
-(`type.amc`, `package.distance`); scoped keys are preferred because they match
-the report's package/type split.
+Every field can carry a `max`, a `min`, or both by repeating threshold flags.
+Structural budgets are per-package or per-type counts; metric bounds follow
+each metric's good/bad direction. Threshold options can use bare legacy metric
+keys (`amc`) or scoped keys (`type.amc`, `package.distance`); scoped keys are
+preferred because they match the report's package/type split.
 
 | Key | Scope | Typical bound | Caps |
 | --- | --- | --- | --- |
@@ -486,78 +521,15 @@ the report's package/type split.
 | `instability` | package | either | `Ce / (Ca + Ce)` (no default) |
 | `distance` | package | `max` | distance from the main sequence |
 
-### `.modularity.yml`
-
-The file mirrors these keys. Each field takes a `max`, a `min`, or both; a bare
-number is shorthand for `max`. Unknown keys and unsupported versions are errors,
-so a typo fails fast rather than silently disabling a check.
-
-```yaml
----
-version: 1
-
-package:
-  types:
-    max: 12
-  exported_funcs:
-    max: 12
-  unexported_funcs:
-    max: 18
-  efferent:
-    max: 10
-  metrics:
-    distance:
-      max: 0.5
-
-type:
-  fields:
-    max: 8
-  methods:
-    max: 10
-  metrics:
-    amc:
-      max: 3
-    lcom1:
-      max: 10
-    lcom96b:
-      max: 0.5
-    camc:
-      min: 0.5
-    tcc:
-      min: 0.5
-    cbo:
-      max: 6
-    reusability:
-      min: 0.7
-```
-
-For backward compatibility, a top-level `metrics:` map is still accepted as a
-legacy/global form and applies to whichever scope emits that metric. New config
-files should prefer `package.metrics` and `type.metrics`, which also lets the
-loader reject a type-only metric under the package section.
-
-### Recommended defaults
-
-`-check` with no config file applies the strict recommended baseline (the
-block above). It gates the robust, low-false-positive fields and follows each
-metric's direction: lower-is-better metrics take a `max`, higher-is-better
-metrics take a `min`. `abstractness` and `instability` have no universal good
-direction and `afferent` is context dependent, so they are left unconstrained —
-opt into them explicitly. `distance` is included but note that isolated
-packages (a lone `main` or leaf `util`) sit at `distance = 1` by convention;
-loosen or drop it if your analysis scope makes that common.
-
-The repository ships a `.modularity.yml` tuned to pass its own code as a
-working, fully commented template.
-
 ### In CI
 
 ```sh
 # Fails the job (exit 3) on any policy violation.
-go-modularity -check ./...
+go-modularity -max=types=12 -max=type.amc=3 -min=type.reusability=0.7 ./...
 
 # Save the machine-readable report and still gate.
-go-modularity -check -format=json -output=modularity.json ./...
+go-modularity -format=json -output=modularity.json \
+  -max=types=12 -max=type.amc=3 -min=type.reusability=0.7 ./...
 ```
 
 ## Common Examples
@@ -601,7 +573,7 @@ go-modularity -format=json -output=modularity-report.json -continue-on-error ./.
 Gate CI on a modularity policy (exit `3` on violations):
 
 ```sh
-go-modularity -check ./...
+go-modularity -max=types=12 -max=type.amc=3 -min=type.reusability=0.7 ./...
 ```
 
 Profile the analyzer itself:
@@ -614,8 +586,8 @@ go-modularity -cpu-profile=cpu.prof -memory-profile=heap.prof ./...
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Success. With `-check`, the report also satisfied every policy condition. |
+| `0` | Success. If a policy gate was enabled by `-check`, `-max`, or `-min`, the report also satisfied every policy condition. |
 | `1` | Analysis, profiling, or report writing failed. |
-| `2` | Command-line usage error, such as an invalid flag, output format, or policy configuration. Plain `--help` exits `2`; `--help --web` writes the metrics guide and exits `0`. |
-| `3` | Policy violations were found (`-check`). The report is on stdout; the violation summary is on stderr. |
+| `2` | Command-line usage error, such as an invalid flag, output format, or policy threshold configuration. Plain `--help` exits `2`; `--help --web` writes the metrics guide and exits `0`. |
+| `3` | Policy violations were found in a gated run. The report is on stdout; the violation summary is on stderr. |
 | `130` | The run was cancelled by a signal (`Ctrl-C` / `SIGTERM`). |

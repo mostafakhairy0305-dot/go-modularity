@@ -4,7 +4,6 @@ go 1.26.5
 
 require (
 	github.com/golangci/plugin-module-register v0.1.2
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
 	golang.org/x/tools v0.48.0
 )
 

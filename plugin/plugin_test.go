@@ -15,6 +15,18 @@ func TestNewBuildAnalyzersAndLoadMode(t *testing.T) {
 		"dependency-scope": "module",
 		"field-usage":      "direct",
 		"patterns":         []any{"./..."},
+		"package": map[string]any{
+			"types": 10,
+			"metrics": map[string]any{
+				"distance": map[string]any{"max": 0.7},
+			},
+		},
+		"type": map[string]any{
+			"fields": map[string]any{"max": 14},
+			"metrics": map[string]any{
+				"camc": map[string]any{"min": 0.3},
+			},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +72,42 @@ func TestNewRejectsUnknownSettings(t *testing.T) {
 	}
 }
 
+func TestNewRejectsPolicyFileSetting(t *testing.T) {
+	t.Parallel()
+
+	_, err := plugin.New(map[string]any{"config": ".modularity.yml"})
+	if err == nil {
+		t.Fatal("expected error for removed config file setting")
+	}
+}
+
+func TestNewRejectsUnknownInlinePolicySettings(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]any{
+		"structural key": map[string]any{
+			"package": map[string]any{"bogus": 1},
+		},
+		"limit key": map[string]any{
+			"type": map[string]any{
+				"metrics": map[string]any{
+					"amc": map[string]any{"maks": 3},
+				},
+			},
+		},
+	}
+
+	for name, raw := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := plugin.New(raw); err == nil {
+				t.Fatal("expected decoding error")
+			}
+		})
+	}
+}
+
 func TestNewRejectsInvalidAnalyzerSettings(t *testing.T) {
 	t.Parallel()
 
@@ -71,5 +119,20 @@ func TestNewRejectsInvalidAnalyzerSettings(t *testing.T) {
 	_, err = p.BuildAnalyzers()
 	if err == nil {
 		t.Fatal("expected BuildAnalyzers error for invalid dependency-scope")
+	}
+
+	p, err = plugin.New(map[string]any{
+		"type": map[string]any{
+			"metrics": map[string]any{
+				"distance": map[string]any{"max": 0.5},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = p.BuildAnalyzers(); err == nil {
+		t.Fatal("expected BuildAnalyzers error for package-only metric under type")
 	}
 }

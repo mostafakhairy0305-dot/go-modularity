@@ -113,14 +113,17 @@ func (c tableCell) width() int {
 	return utf8.RuneCountInString(c.prefix) + utf8.RuneCountInString(c.text)
 }
 
-// treeNode is one node of the package tree: a path segment (or several,
-// when single-child chains are compressed) and, for package nodes, the
-// package's report. Aggregates summarize the node's whole subtree.
+// treeNode is one node of the package tree: a path segment (or several when
+// single-child chains are compressed) and, for package nodes, its report.
 type treeNode struct {
 	name     string
 	pkg      *gomodularity.PackageReport
 	children []*treeNode
+}
 
+// treeSummary holds the computed statistics for one node's complete subtree.
+// Keeping it separate leaves treeNode responsible only for tree topology.
+type treeSummary struct {
 	typesTotal int                     // types in the subtree, applicable or not
 	typeAgg    map[string]*columnStats // subtree type metrics
 	pkgAgg     map[string]*columnStats // subtree package metrics
@@ -139,25 +142,28 @@ func (n *treeNode) child(name string) *treeNode {
 	return c
 }
 
-// aggregate fills the subtree summaries: the mean inputs and value ranges
-// of every type metric below the node, and of every package metric, so
-// package rows can carry their types' means and directories the means of
-// everything they contain.
-func (n *treeNode) aggregate() {
-	n.typeAgg = make(map[string]*columnStats)
+// aggregateTree computes the mean inputs and value ranges for every metric in
+// n's subtree and indexes each node's result for the rendering pass.
+func aggregateTree(n *treeNode, summaries map[*treeNode]*treeSummary) *treeSummary {
+	summary := &treeSummary{
+		typeAgg: make(map[string]*columnStats),
+		pkgAgg:  make(map[string]*columnStats),
+	}
+	summaries[n] = summary
 
-	n.pkgAgg = make(map[string]*columnStats)
 	if n.pkg != nil {
-		n.typesTotal = len(n.pkg.Types)
-		collectPackageStats(n.pkg, n.typeAgg, n.pkgAgg)
+		summary.typesTotal = len(n.pkg.Types)
+		collectPackageStats(n.pkg, summary.typeAgg, summary.pkgAgg)
 	}
 
 	for _, c := range n.children {
-		c.aggregate()
-		n.typesTotal += c.typesTotal
-		mergeStats(n.typeAgg, c.typeAgg)
-		mergeStats(n.pkgAgg, c.pkgAgg)
+		childSummary := aggregateTree(c, summaries)
+		summary.typesTotal += childSummary.typesTotal
+		mergeStats(summary.typeAgg, childSummary.typeAgg)
+		mergeStats(summary.pkgAgg, childSummary.pkgAgg)
 	}
+
+	return summary
 }
 
 // collectPackageStats feeds one package's applicable metric values into the
@@ -270,12 +276,12 @@ func relPath(path, module string) string {
 	return path
 }
 
-// Text renders the whole report as one tree table: package paths branch
-// from the module root, each package row carries its package metrics plus
-// the means of its types' metrics, directory rows carry the means of
-// everything they contain, and types follow as branches with their metric
-// columns. Means average applicable values only. With Explain, the
-// reasons behind n/a cells follow as a notes section.
+// Text renders the whole report as one tree table: the module-root package row
+// summarizes the complete module, leaf package rows carry their exact metrics,
+// and other parent/group rows carry the means of all package metrics below
+// them. Every group mean uses applicable values only. Types follow as branches
+// with their metric columns. With Explain, the reasons behind n/a cells follow
+// as a notes section.
 func Text(report gomodularity.Report, opts TextOptions) string {
 	var b strings.Builder
 	b.WriteString(report.Tool.Name)
@@ -301,6 +307,7 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 		pkgCols:  packageColumns(report),
 		typeCols: reportColumns(report),
 	}
+	summaries := make(map[*treeNode]*treeSummary)
 
 	header := make([]tableCell, 0, 1+len(table.pkgCols)+len(table.typeCols))
 
@@ -312,21 +319,19 @@ func Text(report gomodularity.Report, opts TextOptions) string {
 	table.rows = append(table.rows, header)
 
 	root := buildTree(report)
+	root.name = "."
+	aggregateTree(root, summaries)
 
-	sections := make([]*treeNode, 0, len(root.children)+1)
 	if root.pkg != nil {
-		sections = append(sections, &treeNode{name: ".", pkg: root.pkg})
+		table.emitModuleSummary(root, summaries[root])
 	}
 
-	sections = append(sections, root.children...)
-	for i, section := range sections {
-		section.aggregate()
-
-		if i > 0 {
+	for i, section := range root.children {
+		if root.pkg != nil || i > 0 {
 			table.rows = append(table.rows, nil)
 		}
 
-		table.emitNode(section, "", "")
+		table.emitNode(section, summaries, "", "")
 	}
 
 	// Global column widths keep every branch aligned as one table.
@@ -387,6 +392,17 @@ type textTable struct {
 	rows     [][]tableCell
 }
 
+// emitModuleSummary appends the module-wide root row and any types declared by
+// the root package. Top-level package sections are emitted separately.
+func (t *textTable) emitModuleSummary(node *treeNode, summary *treeSummary) {
+	t.nodeRow(node, summary, "")
+
+	typeCount := nodeTypeCount(node, t.typeCols)
+	for i := range typeCount {
+		t.typeRow(node, summary, i, "", branchGlyph(i, typeCount))
+	}
+}
+
 // naTableCell renders a value that must not be read.
 func naTableCell() tableCell {
 	return tableCell{text: naCell, style: ansiDim}
@@ -394,15 +410,19 @@ func naTableCell() tableCell {
 
 // emitNode appends one package or directory node and its subtree: the node
 // row, its type branches, then child nodes, drawing the tree glyphs.
-func (t *textTable) emitNode(node *treeNode, prefix, connector string) {
-	t.nodeRow(node, prefix+connector)
+func (t *textTable) emitNode(
+	node *treeNode,
+	summaries map[*treeNode]*treeSummary,
+	prefix, connector string,
+) {
+	t.nodeRow(node, summaries[node], prefix+connector)
 
 	childPrefix := childIndent(prefix, connector)
 	typeCount := nodeTypeCount(node, t.typeCols)
 	total := typeCount + len(node.children)
 
 	for i := range typeCount {
-		t.typeRow(node, i, childPrefix, branchGlyph(i, total))
+		t.typeRow(node, summaries[node], i, childPrefix, branchGlyph(i, total))
 	}
 
 	for i, child := range node.children {
@@ -410,7 +430,7 @@ func (t *textTable) emitNode(node *treeNode, prefix, connector string) {
 			t.rows = append(t.rows, []tableCell{{prefix: childPrefix + "│"}})
 		}
 
-		t.emitNode(child, childPrefix, branchGlyph(typeCount+i, total))
+		t.emitNode(child, summaries, childPrefix, branchGlyph(typeCount+i, total))
 	}
 }
 
@@ -447,28 +467,29 @@ func childIndent(prefix, connector string) string {
 	return prefix
 }
 
-// nodeRow appends the spanning row of one package or directory node: its
-// own package metrics (or, for directories, the means of the contained
-// packages) followed by the means over all types in its subtree.
-func (t *textTable) nodeRow(node *treeNode, label string) {
+// nodeRow appends the spanning row of one package or directory node: a leaf's
+// package metrics (or a parent/group's subtree means) followed by the means
+// over all types in its subtree.
+func (t *textTable) nodeRow(node *treeNode, summary *treeSummary, label string) {
 	row := make([]tableCell, 0, 1+len(t.pkgCols)+len(t.typeCols))
 	row = append(row, tableCell{prefix: label, text: node.name, style: ansiBold})
-	row = append(row, nodePkgCells(node, t.pkgCols)...)
-	row = append(row, nodeTypeAggCells(node, t.typeCols)...)
+	row = append(row, nodePkgCells(node, summary, t.pkgCols)...)
+	row = append(row, nodeTypeAggCells(summary, t.typeCols)...)
 
 	t.rows = append(t.rows, row)
 }
 
-// nodePkgCells renders a node's package columns: the package's own metric
-// values, or the mean over the contained packages for a directory node.
-func nodePkgCells(node *treeNode, pkgCols []string) []tableCell {
-	if node.pkg != nil {
+// nodePkgCells renders a node's package columns. Leaf package rows keep their
+// exact values; parent/group rows average all applicable values in the subtree,
+// skipping packages where a metric is not applicable.
+func nodePkgCells(node *treeNode, summary *treeSummary, pkgCols []string) []tableCell {
+	if node.pkg != nil && len(node.children) == 0 {
 		return packageMetricCells(node.pkg, pkgCols)
 	}
 
 	cells := make([]tableCell, 0, len(pkgCols))
 	for _, name := range pkgCols {
-		cells = append(cells, meanCell(node.pkgAgg[name], boundedColorFor(name)))
+		cells = append(cells, meanCell(summary.pkgAgg[name], boundedColorFor(name)))
 	}
 
 	return cells
@@ -476,14 +497,14 @@ func nodePkgCells(node *treeNode, pkgCols []string) []tableCell {
 
 // nodeTypeAggCells renders a node's type columns as the means over all types
 // in its subtree; empty when the subtree holds no types.
-func nodeTypeAggCells(node *treeNode, typeCols []string) []tableCell {
-	if node.typesTotal == 0 {
+func nodeTypeAggCells(summary *treeSummary, typeCols []string) []tableCell {
+	if summary.typesTotal == 0 {
 		return nil
 	}
 
 	cells := make([]tableCell, 0, len(typeCols))
 	for _, name := range typeCols {
-		st := node.typeAgg[name]
+		st := summary.typeAgg[name]
 		cells = append(
 			cells,
 			meanCell(st, func(v float64) string { return valueColor(name, v, st) }),
@@ -495,7 +516,12 @@ func nodeTypeAggCells(node *treeNode, typeCols []string) []tableCell {
 
 // typeRow appends one type's branch row with its metric values, colored
 // against the subtree's column ranges.
-func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string) {
+func (t *textTable) typeRow(
+	node *treeNode,
+	summary *treeSummary,
+	index int,
+	prefix, connector string,
+) {
 	typ := &node.pkg.Types[index]
 	byName := metricsByName(typ.Metrics)
 
@@ -506,7 +532,7 @@ func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string)
 		row = append(row, tableCell{})
 	}
 
-	row = append(row, typeMetricCells(byName, t.typeCols, node)...)
+	row = append(row, typeMetricCells(byName, t.typeCols, summary.typeAgg)...)
 
 	t.rows = append(t.rows, row)
 }
@@ -516,7 +542,7 @@ func (t *textTable) typeRow(node *treeNode, index int, prefix, connector string)
 func typeMetricCells(
 	byName map[string]metrics.MetricResult,
 	typeCols []string,
-	node *treeNode,
+	stats map[string]*columnStats,
 ) []tableCell {
 	cells := make([]tableCell, 0, len(typeCols))
 	for _, name := range typeCols {
@@ -529,7 +555,7 @@ func typeMetricCells(
 
 		cells = append(cells, tableCell{
 			text:  formatCell(r.Value),
-			style: valueColor(name, r.Value, node.typeAgg[name]),
+			style: valueColor(name, r.Value, stats[name]),
 		})
 	}
 

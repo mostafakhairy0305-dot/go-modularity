@@ -19,8 +19,8 @@ const Doc = `enforce Go modularity policy thresholds
 
 Reports policy violations for type- and package-level modularity metrics
 (AMC, LCOM*, CAMC, TCC, CBO, reusability, abstractness, instability, distance,
-and structural budgets). Configuration matches go-modularity -check /
-.modularity.yml.`
+and structural budgets). Policy thresholds are configured inline in the
+golangci-lint settings block.`
 
 // New returns a go/analysis Analyzer that loads the module once, evaluates the
 // modularity policy, and emits diagnostics for the package under analysis.
@@ -80,37 +80,46 @@ func (r *runner) run(pass *analysis.Pass) (any, error) {
 		return nil, r.err
 	}
 
-	path := pass.Pkg.Path()
-	for _, v := range r.byPkg[path] {
+	reportViolations(pass, r.byPkg[pass.Pkg.Path()])
+
+	return nil, nil
+}
+
+// reportViolations emits one diagnostic per violation for this package pass.
+func reportViolations(pass *analysis.Pass, violations []policydomain.Violation) {
+	for _, v := range violations {
 		pass.Report(analysis.Diagnostic{
 			Pos:      violationPos(pass, v),
 			Category: Name,
 			Message:  formatViolation(v),
 		})
 	}
-
-	return nil, nil
 }
 
 func (r *runner) load() {
-	policy, err := resolvePolicy(r.settings.Config, r.settings.Directory)
-	if err != nil {
-		r.err = fmt.Errorf("gomodularity policy: %w", err)
+	r.byPkg, r.err = computeViolations(r.settings, r.analyzer)
+}
 
-		return
+// computeViolations performs the fallible analysis work before the runner
+// caches its result for subsequent package passes.
+func computeViolations(
+	settings Settings,
+	analyzer reportAnalyzer,
+) (map[string][]policydomain.Violation, error) {
+	policy, err := settings.policy()
+	if err != nil {
+		return nil, fmt.Errorf("gomodularity policy: %w", err)
 	}
 
-	report, err := r.analyzer.Analyze(
+	report, err := analyzer.Analyze(
 		context.Background(),
-		r.settings.toConfig(gatedMetrics(policy)),
+		settings.toConfig(gatedMetrics(policy)),
 	)
 	if err != nil {
-		r.err = fmt.Errorf("gomodularity analyze: %w", err)
-
-		return
+		return nil, fmt.Errorf("gomodularity analyze: %w", err)
 	}
 
-	r.byPkg = groupByPackage(policydomain.Evaluate(report, policy))
+	return groupByPackage(policydomain.Evaluate(report, policy)), nil
 }
 
 func groupByPackage(violations []policydomain.Violation) map[string][]policydomain.Violation {

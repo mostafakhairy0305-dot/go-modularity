@@ -122,19 +122,25 @@ func Evaluate(report gomodularity.Report, policy Policy) []Violation {
 
 // check appends a violation for each bound the value crosses.
 func check(violations *[]Violation, pkg, typ, key string, value float64, limit Limit) {
-	if limit.HasMax && value > limit.Max {
+	if limit.HasMax && value-limit.Max > comparisonTolerance(value, limit.Max) {
 		*violations = append(*violations, Violation{
 			Package: pkg, Type: typ, Key: key, Value: value,
 			Comparator: ComparatorMax, Threshold: limit.Max,
 		})
 	}
 
-	if limit.HasMin && value < limit.Min {
+	if limit.HasMin && limit.Min-value > comparisonTolerance(value, limit.Min) {
 		*violations = append(*violations, Violation{
 			Package: pkg, Type: typ, Key: key, Value: value,
 			Comparator: ComparatorMin, Threshold: limit.Min,
 		})
 	}
+}
+
+// comparisonTolerance absorbs floating-point representation noise at a policy
+// boundary without hiding a meaningful threshold crossing.
+func comparisonTolerance(value, threshold float64) float64 {
+	return 1e-12 * max(1, math.Abs(value), math.Abs(threshold))
 }
 
 // FormatViolations renders violations as a human-readable summary. The empty

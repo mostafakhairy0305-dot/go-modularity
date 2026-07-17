@@ -29,47 +29,34 @@ func TestOverrideListErrorsAndString(t *testing.T) {
 	}
 }
 
-func TestResolvePolicyErrorsAndDiscovery(t *testing.T) {
-	if _, _, err := resolvePolicy(
-		filepath.Join(t.TempDir(), "missing.yml"),
-		overrideList{},
-		overrideList{},
-	); err == nil {
-		t.Fatal("missing explicit policy succeeded")
-	}
-
+func TestResolvePolicyRequiresThresholdsAndIgnoresConfigFiles(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 	config := filepath.Join(dir, ".modularity.yml")
 	if err := os.WriteFile(config, []byte("not: valid\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := resolvePolicy("", overrideList{}, overrideList{}); err == nil {
-		t.Fatal("invalid discovered policy succeeded")
+
+	if _, _, err := resolvePolicy(overrideList{}, overrideList{}); err == nil {
+		t.Fatal("empty flag policy succeeded")
 	}
 
-	if err := os.WriteFile(
-		config,
-		[]byte("version: 1\npackage:\n  types: 5\n"),
-		0o600,
-	); err != nil {
-		t.Fatal(err)
-	}
-	policy, source, err := resolvePolicy("", overrideList{}, overrideList{})
+	maxima := overrideList{items: []override{{key: policydomain.KeyTypes, value: 5}}}
+	policy, source, err := resolvePolicy(maxima, overrideList{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if policy.Package.Types.Max != 5 || source != ".modularity.yml" {
-		t.Fatalf("discovered policy = %+v, source = %q", policy.Package.Types, source)
+	if policy.Package.Types.Max != 5 || source != "flag thresholds" {
+		t.Fatalf("flag policy = %+v, source = %q", policy.Package.Types, source)
 	}
 
 	badMinimum := overrideList{items: []override{{key: "bogus", value: 1}}}
-	if _, _, err := resolvePolicy("", overrideList{}, badMinimum); err == nil {
+	if _, _, err := resolvePolicy(overrideList{}, badMinimum); err == nil {
 		t.Fatal("unknown minimum override succeeded")
 	}
 
 	contradictory := overrideList{items: []override{{key: policydomain.KeyTypes, value: 6}}}
-	if _, _, err := resolvePolicy("", overrideList{}, contradictory); err == nil {
+	if _, _, err := resolvePolicy(maxima, contradictory); err == nil {
 		t.Fatal("minimum above configured maximum succeeded")
 	}
 }
@@ -93,15 +80,12 @@ func TestRunEarlyErrorPaths(t *testing.T) {
 }
 
 func TestResolvePolicyOverrideSource(t *testing.T) {
-	dir := t.TempDir()
-	t.Chdir(dir)
-
 	maxima := overrideList{items: []override{{key: policydomain.KeyTypes, value: 20}}}
-	_, source, err := resolvePolicy("", maxima, overrideList{})
+	_, source, err := resolvePolicy(maxima, overrideList{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(source, "flag overrides") {
+	if !strings.Contains(source, "flag thresholds") {
 		t.Fatalf("source = %q", source)
 	}
 }

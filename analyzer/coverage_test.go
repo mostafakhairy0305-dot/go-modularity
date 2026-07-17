@@ -76,7 +76,9 @@ func TestRunnerRunReportsPackageAndTypeViolations(t *testing.T) {
 }
 
 func TestRunnerLoadErrors(t *testing.T) {
-	r := newRunner(Settings{Config: filepath.Join(t.TempDir(), "missing.yml")}.withDefaults())
+	r := newRunner(Settings{Type: &TypeSettings{Metrics: map[string]LimitSettings{
+		"distance": maximum(1),
+	}}}.withDefaults())
 	r.load()
 	if r.err == nil || !strings.Contains(r.err.Error(), "gomodularity policy") {
 		t.Fatalf("policy load error = %v", r.err)
@@ -92,18 +94,8 @@ func TestRunnerLoadErrors(t *testing.T) {
 	}
 }
 
-func TestResolvePolicyDiscoveryAndDefaults(t *testing.T) {
+func TestInlinePolicyDefaultsAndIgnoresModularityFile(t *testing.T) {
 	dir := t.TempDir()
-	t.Chdir(dir)
-
-	defaults, err := resolvePolicy("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !defaults.Package.Types.HasMax {
-		t.Fatal("default policy was not returned")
-	}
-
 	config := filepath.Join(dir, ".modularity.yml")
 	if err := os.WriteFile(
 		config,
@@ -112,12 +104,28 @@ func TestResolvePolicyDiscoveryAndDefaults(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	discovered, err := resolvePolicy("", dir)
+
+	defaults, err := (Settings{Directory: dir}).policy()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !discovered.Package.Types.HasMax || discovered.Package.Types.Max != 3 {
-		t.Fatalf("discovered types limit = %+v", discovered.Package.Types)
+	if !defaults.Package.Types.HasMax || defaults.Package.Types.Max != 12 {
+		t.Fatalf("default types limit = %+v, want max 12", defaults.Package.Types)
+	}
+
+	types := maximum(3)
+	inline, err := (Settings{Package: &PackageSettings{Types: &types}}).policy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inline.Package.Types.HasMax || inline.Package.Types.Max != 3 {
+		t.Fatalf("inline types limit = %+v", inline.Package.Types)
+	}
+	if inline.Type.Methods.HasMax {
+		t.Fatalf(
+			"inline policy unexpectedly merged default methods limit: %+v",
+			inline.Type.Methods,
+		)
 	}
 }
 

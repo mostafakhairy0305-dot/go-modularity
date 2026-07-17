@@ -133,6 +133,104 @@ func TestTextTreeGroupsPackagesUnderSharedPath(t *testing.T) {
 	mustMatch(t, got, `(?m)^    └── T2\s+1\.00$`)
 }
 
+func TestTextParentPackageGroupSkipsNonApplicableMetrics(t *testing.T) {
+	report := tableReport()
+	report.Packages = []gomodularity.PackageReport{
+		{
+			Path: "example.com/mod/group",
+			Metrics: []metrics.MetricResult{
+				{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage},
+				{
+					Name:       metrics.MetricInstability,
+					Scope:      metrics.ScopePackage,
+					Value:      0.2,
+					Applicable: true,
+				},
+				{Name: metrics.MetricDistance, Scope: metrics.ScopePackage},
+			},
+		},
+		{
+			Path: "example.com/mod/group/child",
+			Metrics: []metrics.MetricResult{
+				{
+					Name:       metrics.MetricAbstractness,
+					Scope:      metrics.ScopePackage,
+					Value:      0.6,
+					Applicable: true,
+				},
+				{
+					Name:       metrics.MetricInstability,
+					Scope:      metrics.ScopePackage,
+					Value:      0.8,
+					Applicable: true,
+				},
+				{
+					Name:       metrics.MetricDistance,
+					Scope:      metrics.ScopePackage,
+					Value:      0.4,
+					Applicable: true,
+				},
+			},
+		},
+	}
+
+	got := Text(report, TextOptions{})
+
+	// The parent package is also a group. Its n/a abstractness and distance
+	// are skipped, while instability averages both applicable package values.
+	mustMatch(t, got, `(?m)^group\s+0\.60\s+0\.50\s+0\.40$`)
+	mustMatch(t, got, `(?m)^└── child\s+0\.60\s+0\.80\s+0\.40$`)
+}
+
+func TestTextModuleRootSummarizesApplicablePackageMetrics(t *testing.T) {
+	report := tableReport()
+	report.Packages = []gomodularity.PackageReport{
+		{
+			Path: "example.com/mod",
+			Metrics: []metrics.MetricResult{
+				{Name: metrics.MetricAbstractness, Scope: metrics.ScopePackage},
+				{
+					Name:       metrics.MetricInstability,
+					Scope:      metrics.ScopePackage,
+					Value:      1,
+					Applicable: true,
+				},
+				{Name: metrics.MetricDistance, Scope: metrics.ScopePackage},
+			},
+		},
+		{
+			Path: "example.com/mod/child",
+			Metrics: []metrics.MetricResult{
+				{
+					Name:       metrics.MetricAbstractness,
+					Scope:      metrics.ScopePackage,
+					Value:      0.6,
+					Applicable: true,
+				},
+				{
+					Name:       metrics.MetricInstability,
+					Scope:      metrics.ScopePackage,
+					Value:      0.5,
+					Applicable: true,
+				},
+				{
+					Name:       metrics.MetricDistance,
+					Scope:      metrics.ScopePackage,
+					Value:      0.4,
+					Applicable: true,
+				},
+			},
+		},
+	}
+
+	got := Text(report, TextOptions{})
+
+	// Root n/a metrics are skipped. Instability averages the applicable root
+	// and child values, while abstractness and distance use the child value.
+	mustMatch(t, got, `(?m)^\.\s+0\.60\s+0\.75\s+0\.40$`)
+	mustMatch(t, got, `(?m)^child\s+0\.60\s+0\.50\s+0\.40$`)
+}
+
 func TestTextReasonsOnlyWithExplain(t *testing.T) {
 	report := tableReport()
 

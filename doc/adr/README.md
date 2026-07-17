@@ -19,6 +19,6 @@ Decision log for go-modularity, managed with `task adrs:*`
 * [14. Use adrs to manage architecture decision records](0014-use-adrs-to-manage-architecture-decision-records.md)
 * [15. Render a self-contained HTML web report](0015-render-a-self-contained-html-web-report.md)
 * [16. Generate a self-contained web help page for metrics](0016-generate-a-self-contained-web-help-page-for-metrics.md)
-* [17. Add go.yaml.in/yaml/v4 for policy config](0017-add-yaml-v4-for-policy-config.md)
+* [17. Superseded: Add go.yaml.in/yaml/v4 for policy config](0017-add-yaml-v4-for-policy-config.md)
 * [18. Enforce a modularity policy gate](0018-enforce-a-modularity-policy-gate.md)
 * [19. Dual-mode: CLI library and golangci-lint Module Plugin](0019-dual-mode-cli-and-golangci-module-plugin.md)
